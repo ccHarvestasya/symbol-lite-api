@@ -1,0 +1,34 @@
+{
+  "name": "symbol-zeromq",
+  "author": "Mimosa Harvestasya @MimosaHrvsty",
+  "license": "MIT",
+  "homepage": "https://github.com/ccHarvestasya/symbol-zeromq",
+  "bugs": "https://github.com/ccHarvestasya/symbol-zeromq/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ccHarvestasya/symbol-zeromq.git"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "packageManager": "yarn@4.4.0",
+  "scripts": {
+    "build": "tsc",
+    "publish": "npm run build && npm publish --access=public"
+  },
+  "devDependencies": {
+    "@types/eslint": "^9.6.1",
+    "@types/node": "^22.7.4",
+    "@types/zeromq": "^5.2.5",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "eslint": "8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "5.5"
+  },
+  "dependencies": {
+    "zeromq": "^6.0.8"
+  }
+}
