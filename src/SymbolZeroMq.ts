@@ -1,70 +1,205 @@
-import zmq from 'zeromq'
+import { Hash256, utils } from 'symbol-sdk'
+import { descriptors, models, SymbolFacade } from 'symbol-sdk/symbol'
+import zmq, { Subscriber } from 'zeromq'
+import { WsBlock } from './models/WsBlock.js'
+import { RawData, WebSocket, WebSocketServer } from 'ws'
+import { WsFinalizedBlock } from './models/WsFinalizedBlock.js'
 
 export class SymbolZeroMq {
-  public async connectZeroMq(host: string = 'localhost', port: number = 7902) {
-    const socket = new zmq.Subscriber()
+  private ws: WebSocket
+  private sock: Subscriber
+  private tcpAddress: string
 
-    console.log(`Connecting to ${host}:${port}`)
-    socket.connect(`tcp://${host}:${port}`)
+  private blockMarker = Buffer.from(utils.hexToUint8('9FF2D8E480CA6A49').reverse())
+  private finalizedMarker = Buffer.from(utils.hexToUint8('4D4832A031CE7954').reverse())
+  private dropMarker = Buffer.from(utils.hexToUint8('5C20D68AEE25B0B0').reverse())
+  private transactionMarker = Buffer.from(utils.hexToUint8('61'))
+  private utAddMarker = Buffer.from(utils.hexToUint8('75'))
+  private utDelMarker = Buffer.from(utils.hexToUint8('72'))
+  private ptAddMarker = Buffer.from(utils.hexToUint8('70'))
+  private ptDelMarker = Buffer.from(utils.hexToUint8('71'))
+  private statusMarker = Buffer.from(utils.hexToUint8('73'))
+  private cosignatureMarker = Buffer.from(utils.hexToUint8('63'))
 
-    const blockMarker = Buffer.from(Buffer.from('9FF2D8E480CA6A49', 'hex').toReversed())
-    const finalizedMarker = Buffer.from(Buffer.from('4D4832A031CE7954', 'hex').toReversed())
-    const dropMarker = Buffer.from(Buffer.from('5C20D68AEE25B0B0', 'hex').toReversed())
+  constructor(ws: WebSocket, host = 'localhost', port = 7902) {
+    this.ws = ws
+    this.sock = new Subscriber()
+    this.tcpAddress = `tcp://${host}:${port}`
+    this.sock.connect(this.tcpAddress)
+    console.log(`Connecting to ${this.tcpAddress}`)
+  }
 
-    socket.subscribe(blockMarker)
-    socket.subscribe(finalizedMarker)
-    socket.subscribe(dropMarker)
+  /** 開始 */
+  start = async () => {
+    while (true) {
+      const receiveData = await this.sock.receive()
+      const topic = receiveData[0]
+      console.log(receiveData)
+      console.log('topic', topic)
 
-    const transactionMarker = Buffer.from('3D', 'hex')
-    const transactionStatusMarker = Buffer.from('49', 'hex')
-    const utAddMarker = Buffer.from('4B', 'hex')
-    const utDelMarker = Buffer.from('48', 'hex')
+      if (topic.equals(this.blockMarker)) this.notifyBlock(receiveData[1], receiveData[2], receiveData[3])
+      else if (topic.equals(this.finalizedMarker)) this.notifyfinalizedBlock(receiveData[1])
+      else if (topic.readInt8() === this.transactionMarker.readInt8())
+        this.notifyConfirmedAdded(receiveData[1], receiveData[2], receiveData[3], receiveData[4])
+    }
+  }
 
-    socket.subscribe(transactionMarker)
-    socket.subscribe(transactionStatusMarker)
-    socket.subscribe(utAddMarker)
-    socket.subscribe(utDelMarker)
+  /** 切断 */
+  close = () => this.sock.disconnect(this.tcpAddress)
 
-    for await (const [topic, msg] of socket) {
-      console.log('received a message related to:', topic, 'containing message:', msg)
+  /** ブロック生成 購読開始 */
+  subscribeBlock = () => this.sock.subscribe(this.blockMarker)
+  /** ブロック生成 購読終了 */
+  unsubscribeBlock = () => this.sock.unsubscribe(this.blockMarker)
+  /** ファイナライズ 購読開始 */
+  subscribeFinalized = () => this.sock.subscribe(this.finalizedMarker)
+  /** ファイナライズ 購読終了 */
+  unsubscribeFinalized = () => this.sock.unsubscribe(this.finalizedMarker)
+  /** ブロック取消 購読開始 */
+  subscribeDrop = () => this.sock.subscribe(this.dropMarker)
+  /** 承認トランザクション 購読開始 */
+  subscribeConfirmedAdded = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.transactionMarker, address.bytes]) : this.transactionMarker
+    this.sock.subscribe(marker)
+  }
+  /** 承認トランザクション 購読終了 */
+  unsubscribeConfirmedAdded = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.transactionMarker, address.bytes]) : this.transactionMarker
+    this.sock.unsubscribe(marker)
+  }
+  /** 未承認トランザクション追加 購読開始 */
+  subscribeUnconfirmedTxAdded = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.utAddMarker, address.bytes]) : this.utAddMarker
+    this.sock.subscribe(marker)
+  }
+  /** 未承認トランザクション追加 購読終了 */
+  unsubscribeUnconfirmedTxAdd = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.utAddMarker, address.bytes]) : this.utAddMarker
+    this.sock.unsubscribe(marker)
+  }
+  /** 未承認トランザクション削除 購読開始 */
+  subscribeUnconfirmedTxRemoved = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.utDelMarker, address.bytes]) : this.utDelMarker
+    this.sock.subscribe(marker)
+  }
+  /** 未承認トランザクション削除 購読終了 */
+  unsubscribeUnconfirmedTxDRemoved = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.utDelMarker, address.bytes]) : this.utDelMarker
+    this.sock.unsubscribe(marker)
+  }
+  /** パーシャルトランザクション追加 購読開始 */
+  subscribePartialAdded = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.ptAddMarker, address.bytes]) : this.ptAddMarker
+    this.sock.subscribe(marker)
+  }
+  /** パーシャルトランザクション追加 購読終了 */
+  unsubscribePartialAdded = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.ptAddMarker, address.bytes]) : this.ptAddMarker
+    this.sock.unsubscribe(marker)
+  }
+  /** パーシャルトランザクション削除 購読開始 */
+  subscribePartialRemoved = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.ptDelMarker, address.bytes]) : this.ptDelMarker
+    this.sock.subscribe(marker)
+  }
+  /** パーシャルトランザクション削除 購読終了 */
+  unsubscribePartialRemoved = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.ptDelMarker, address.bytes]) : this.ptDelMarker
+    this.sock.unsubscribe(marker)
+  }
+  /** ステータス 購読開始 */
+  subscribeStatus = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.statusMarker, address.bytes]) : this.statusMarker
+    this.sock.subscribe(marker)
+  }
+  /** ステータス 購読終了 */
+  unsubscribeStatus = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.statusMarker, address.bytes]) : this.statusMarker
+    this.sock.unsubscribe(marker)
+  }
+  /** 署名 購読開始 */
+  subscribeCosignature = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.cosignatureMarker, address.bytes]) : this.cosignatureMarker
+    this.sock.subscribe(marker)
+  }
+  /** 署名 購読終了 */
+  unsubscribeCosignature = (address?: models.Address) => {
+    const marker = address ? Buffer.concat([this.cosignatureMarker, address.bytes]) : this.cosignatureMarker
+    this.sock.unsubscribe(marker)
+  }
+
+  private notifyBlock(blockHeader: Buffer, entityHash: Buffer, generationHash: Buffer) {
+    blockHeader.writeInt32LE(blockHeader.byteLength) // 先頭にあるサイズを実サイズに変更する
+    const header = models.BlockFactory.deserialize(blockHeader) as models.Block
+
+    const wsBlock: WsBlock = {
+      topic: 'block',
+      data: {
+        block: {
+          signature: header.signature.toString(),
+          signerPublicKey: header.signerPublicKey.toString(),
+          version: header.version,
+          network: header.network.value,
+          type: header.type.value,
+          height: header.height.value.toString(),
+          timestamp: header.timestamp.value.toString(),
+          difficulty: header.difficulty.value.toString(),
+          proofGamma: header.generationHashProof.gamma.toString(),
+          proofVerificationHash: header.generationHashProof.verificationHash.toString(),
+          proofScalar: header.generationHashProof.scalar.toString(),
+          previousBlockHash: header.previousBlockHash.toString(),
+          transactionsHash: header.transactionsHash.toString(),
+          receiptsHash: header.receiptsHash.toString(),
+          stateHash: header.stateHash.toString(),
+          beneficiaryAddress: header.beneficiaryAddress.toString(),
+          feeMultiplier: header.feeMultiplier.value as number,
+          votingEligibleAccountsCount: (header as models.ImportanceBlockV1).votingEligibleAccountsCount,
+          harvestingEligibleAccountsCount: (
+            header as models.ImportanceBlockV1
+          ).harvestingEligibleAccountsCount?.toString(),
+          totalVotingBalance: (header as models.ImportanceBlockV1).totalVotingBalance?.value.toString(),
+          previousImportanceBlockHash: (header as models.ImportanceBlockV1).previousImportanceBlockHash?.toString(),
+        },
+        meta: {
+          hash: new Hash256(entityHash).toString(),
+          generationHash: new Hash256(generationHash).toString(),
+        },
+      },
     }
 
-    // facade = SymbolFacade('mainnet')
-
-    // while True:
-    // 	topic = socket.recv()
-    // 	if block_marker == topic:
-    // 		block_header = socket.recv()
-    // 		entity_hash = Hash256(socket.recv())
-    // 		generation_hash = Hash256(socket.recv())
-    // 		header = BlockFactory.deserialize(block_header)
-    // 		print(f'block height: {header.height} ({header.height.value}) entity_hash {entity_hash} generation_hash {generation_hash}')
-    // 		print(f'block harvested by: {header.signer_public_key} {facade.network.public_key_to_address(header.signer_public_key)}')
-    // 		print(f'block transactions: {header.transactions}')
-    // 	elif finalized_marker == topic:
-    // 		body_part_1 = socket.recv()
-    // 		finalization_round = int.from_bytes(body_part_1[0:8], byteorder='little')
-    // 		finalizated_height = int.from_bytes(body_part_1[8:16], byteorder='little')
-    // 		entity_hash =  Hash256(body_part_1[16:])
-    // 		print(f'FINALIZED height: {finalization_round} ({finalizated_height}) entity_hash {entity_hash}')
-    // 	elif drop_marker == topic:
-    // 		body_part_1 = socket.recv()
-    // 		height = int.from_bytes(body_part_1[0:8], byteorder='little')
-    // 		print(f'drop after height: {height}')
-    // 	elif ut_add_marker[0] == topic[0] or transaction_marker[0] == topic[0]:  # mind [0]
-    // 		message = 'UT add' if ut_add_marker[0] == topic[0] else 'transaction add'
-    // 		# rest of the topic contains address
-    // 		address = SymbolFacade.Address(topic[1:])
-    // 		transaction = socket.recv()
-    // 		entity_hash = Hash256(socket.recv())
-    // 		merkle_component_hash = Hash256(socket.recv())
-    // 		body_part_1 = socket.recv()
-    // 		height = int.from_bytes(body_part_1[0:8], byteorder='little')
-    // 		print(f'{message} {address} {entity_hash} {height}')
-    // 	elif ut_del_marker[0] == topic[0]:  # mind [0]:
-    // 		entity_hash = Hash256(socket.recv())
-    // 		print(f'UT del {entity_hash} {height}')
-    // 	else:
-    // 		print(f'unknown [ {len(topic)} {topic} ]')
+    this.ws.send(JSON.stringify(wsBlock))
   }
+
+  private notifyfinalizedBlock = (blockHeader: Buffer) => {
+    const header = models.FinalizedBlockHeader.deserialize(blockHeader) as models.FinalizedBlockHeader
+
+    const wsFinalizedBlock: WsFinalizedBlock = {
+      topic: 'finalizedBlock',
+      data: {
+        finalizationEpoch: header.round.epoch.value as number,
+        finalizationPoint: header.round.point.value as number,
+        height: header.height.value.toString(),
+        hash: header.hash.toString(),
+      },
+    }
+
+    this.ws.send(JSON.stringify(wsFinalizedBlock))
+  }
+
+  private notifyConfirmedAdded = (tranBuffer: Buffer, hash: Buffer, merkleComponentHash: Buffer, height: Buffer) => {
+    const tran = models.TransactionFactory.deserialize(tranBuffer) as models.Transaction
+    console.log(tran.toString())
+  }
+
+  private notifyUnconfirmedAdded = () => {}
+
+  private notifyUnconfirmedRemoved = () => {}
+
+  private notifyPartialAdded = () => {}
+
+  private notifyPartialRemoved = () => {}
+
+  private notifyCosignature = () => {}
+
+  private notifyStatus = () => {}
 }
