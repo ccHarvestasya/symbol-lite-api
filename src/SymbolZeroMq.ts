@@ -4,6 +4,7 @@ import zmq, { Subscriber } from 'zeromq'
 import { WsBlock } from './models/WsBlock.js'
 import { RawData, WebSocket, WebSocketServer } from 'ws'
 import { WsFinalizedBlock } from './models/WsFinalizedBlock.js'
+import { appendFileSync, writeFileSync } from 'fs'
 
 export class SymbolZeroMq {
   private ws: WebSocket
@@ -11,15 +12,15 @@ export class SymbolZeroMq {
   private tcpAddress: string
 
   private blockMarker = Buffer.from(utils.hexToUint8('9FF2D8E480CA6A49').reverse())
-  private finalizedMarker = Buffer.from(utils.hexToUint8('4D4832A031CE7954').reverse())
+  private finalizedBlockMarker = Buffer.from(utils.hexToUint8('4D4832A031CE7954').reverse())
   private dropMarker = Buffer.from(utils.hexToUint8('5C20D68AEE25B0B0').reverse())
-  private transactionMarker = Buffer.from(utils.hexToUint8('61'))
-  private utAddMarker = Buffer.from(utils.hexToUint8('75'))
-  private utDelMarker = Buffer.from(utils.hexToUint8('72'))
-  private ptAddMarker = Buffer.from(utils.hexToUint8('70'))
-  private ptDelMarker = Buffer.from(utils.hexToUint8('71'))
-  private statusMarker = Buffer.from(utils.hexToUint8('73'))
+  private confirmedAddedMarker = Buffer.from(utils.hexToUint8('61'))
+  private unconfirmedAddedMarker = Buffer.from(utils.hexToUint8('75'))
+  private unconfirmedRemovedMarker = Buffer.from(utils.hexToUint8('72'))
+  private partialAddedMarker = Buffer.from(utils.hexToUint8('70'))
+  private partialRemovedMarker = Buffer.from(utils.hexToUint8('71'))
   private cosignatureMarker = Buffer.from(utils.hexToUint8('63'))
+  private statusMarker = Buffer.from(utils.hexToUint8('73'))
 
   constructor(ws: WebSocket, host = 'localhost', port = 7902) {
     this.ws = ws
@@ -38,9 +39,43 @@ export class SymbolZeroMq {
       console.log('topic', topic)
 
       if (topic.equals(this.blockMarker)) this.notifyBlock(receiveData[1], receiveData[2], receiveData[3])
-      else if (topic.equals(this.finalizedMarker)) this.notifyfinalizedBlock(receiveData[1])
-      else if (topic.readInt8() === this.transactionMarker.readInt8())
+      else if (topic.equals(this.finalizedBlockMarker)) this.notifyfinalizedBlock(receiveData[1])
+      else if (topic.readInt8() === this.confirmedAddedMarker.readInt8())
         this.notifyConfirmedAdded(receiveData[1], receiveData[2], receiveData[3], receiveData[4])
+    }
+  }
+
+  getTestData = async () => {
+    while (true) {
+      const receiveData = await this.sock.receive()
+      const topic = receiveData[0]
+      console.log(receiveData)
+      console.log('topic', topic)
+
+      if (topic.equals(this.blockMarker)) {
+        receiveData[1].writeInt32LE(receiveData[1].byteLength) // 先頭にあるサイズを実サイズに変更する
+        const data = models.BlockFactory.deserialize(receiveData[1]) as models.Block
+        appendFileSync('block_' + data.type.toString(), receiveData[1].toString('hex') + '\n')
+      } else if (topic.equals(this.finalizedBlockMarker)) {
+        // const data = models.FinalizedBlockHeader.deserialize(receiveData[1]) as models.FinalizedBlockHeader
+        appendFileSync('finalized', receiveData[1].toString('hex') + '\n')
+      } else if (topic.readInt8() === this.confirmedAddedMarker.readInt8()) {
+        const data = models.TransactionFactory.deserialize(receiveData[1]) as models.Transaction
+        appendFileSync('confirmedAdded_' + data.type.toString(), receiveData[1].toString('hex') + '\n')
+      } else if (topic.readInt8() === this.unconfirmedAddedMarker.readInt8()) {
+        const data = models.TransactionFactory.deserialize(receiveData[1]) as models.Transaction
+        appendFileSync('unconfirmedAdded_' + data.type.toString(), receiveData[1].toString('hex') + '\n')
+      } else if (topic.readInt8() === this.unconfirmedRemovedMarker.readInt8()) {
+        appendFileSync('unconfirmedRemoved', receiveData[1].toString('hex') + '\n')
+      } else if (topic.readInt8() === this.partialAddedMarker.readInt8()) {
+        appendFileSync('partialAdded', receiveData[1].toString('hex') + '\n')
+      } else if (topic.readInt8() === this.partialRemovedMarker.readInt8()) {
+        appendFileSync('partialRemoved', receiveData[1].toString('hex') + '\n')
+      } else if (topic.readInt8() === this.cosignatureMarker.readInt8()) {
+        appendFileSync('cosignature', receiveData[1].toString('hex') + '\n')
+      } else if (topic.readInt8() === this.statusMarker.readInt8()) {
+        appendFileSync('status', receiveData[1].toString('hex') + '\n')
+      }
     }
   }
 
@@ -52,59 +87,63 @@ export class SymbolZeroMq {
   /** ブロック生成 購読終了 */
   unsubscribeBlock = () => this.sock.unsubscribe(this.blockMarker)
   /** ファイナライズ 購読開始 */
-  subscribeFinalized = () => this.sock.subscribe(this.finalizedMarker)
+  subscribeFinalizedBlock = () => this.sock.subscribe(this.finalizedBlockMarker)
   /** ファイナライズ 購読終了 */
-  unsubscribeFinalized = () => this.sock.unsubscribe(this.finalizedMarker)
+  unsubscribeFinalizedBlock = () => this.sock.unsubscribe(this.finalizedBlockMarker)
   /** ブロック取消 購読開始 */
   subscribeDrop = () => this.sock.subscribe(this.dropMarker)
   /** 承認トランザクション 購読開始 */
   subscribeConfirmedAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.transactionMarker, address.bytes]) : this.transactionMarker
+    const marker = address ? Buffer.concat([this.confirmedAddedMarker, address.bytes]) : this.confirmedAddedMarker
     this.sock.subscribe(marker)
   }
   /** 承認トランザクション 購読終了 */
   unsubscribeConfirmedAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.transactionMarker, address.bytes]) : this.transactionMarker
+    const marker = address ? Buffer.concat([this.confirmedAddedMarker, address.bytes]) : this.confirmedAddedMarker
     this.sock.unsubscribe(marker)
   }
   /** 未承認トランザクション追加 購読開始 */
   subscribeUnconfirmedTxAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.utAddMarker, address.bytes]) : this.utAddMarker
+    const marker = address ? Buffer.concat([this.unconfirmedAddedMarker, address.bytes]) : this.unconfirmedAddedMarker
     this.sock.subscribe(marker)
   }
   /** 未承認トランザクション追加 購読終了 */
   unsubscribeUnconfirmedTxAdd = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.utAddMarker, address.bytes]) : this.utAddMarker
+    const marker = address ? Buffer.concat([this.unconfirmedAddedMarker, address.bytes]) : this.unconfirmedAddedMarker
     this.sock.unsubscribe(marker)
   }
   /** 未承認トランザクション削除 購読開始 */
   subscribeUnconfirmedTxRemoved = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.utDelMarker, address.bytes]) : this.utDelMarker
+    const marker = address
+      ? Buffer.concat([this.unconfirmedRemovedMarker, address.bytes])
+      : this.unconfirmedRemovedMarker
     this.sock.subscribe(marker)
   }
   /** 未承認トランザクション削除 購読終了 */
   unsubscribeUnconfirmedTxDRemoved = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.utDelMarker, address.bytes]) : this.utDelMarker
+    const marker = address
+      ? Buffer.concat([this.unconfirmedRemovedMarker, address.bytes])
+      : this.unconfirmedRemovedMarker
     this.sock.unsubscribe(marker)
   }
   /** パーシャルトランザクション追加 購読開始 */
   subscribePartialAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.ptAddMarker, address.bytes]) : this.ptAddMarker
+    const marker = address ? Buffer.concat([this.partialAddedMarker, address.bytes]) : this.partialAddedMarker
     this.sock.subscribe(marker)
   }
   /** パーシャルトランザクション追加 購読終了 */
   unsubscribePartialAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.ptAddMarker, address.bytes]) : this.ptAddMarker
+    const marker = address ? Buffer.concat([this.partialAddedMarker, address.bytes]) : this.partialAddedMarker
     this.sock.unsubscribe(marker)
   }
   /** パーシャルトランザクション削除 購読開始 */
   subscribePartialRemoved = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.ptDelMarker, address.bytes]) : this.ptDelMarker
+    const marker = address ? Buffer.concat([this.partialRemovedMarker, address.bytes]) : this.partialRemovedMarker
     this.sock.subscribe(marker)
   }
   /** パーシャルトランザクション削除 購読終了 */
   unsubscribePartialRemoved = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.ptDelMarker, address.bytes]) : this.ptDelMarker
+    const marker = address ? Buffer.concat([this.partialRemovedMarker, address.bytes]) : this.partialRemovedMarker
     this.sock.unsubscribe(marker)
   }
   /** ステータス 購読開始 */

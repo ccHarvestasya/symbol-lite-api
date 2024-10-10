@@ -1,12 +1,12 @@
 {
-  "name": "symbol-zeromq",
+  "name": "symbol-lite-api",
   "author": "Mimosa Harvestasya @MimosaHrvsty",
   "license": "MIT",
-  "homepage": "https://github.com/ccHarvestasya/symbol-zeromq",
-  "bugs": "https://github.com/ccHarvestasya/symbol-zeromq/issues",
+  "homepage": "https://github.com/ccHarvestasya/symbol-lite-api",
+  "bugs": "https://github.com/ccHarvestasya/symbol-lite-api/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ccHarvestasya/symbol-zeromq.git"
+    "url": "git+https://github.com/ccHarvestasya/symbol-liteapi.git"
   },
   "type": "module",
   "main": "dist/index.js",
@@ -14,6 +14,7 @@
   "packageManager": "yarn@4.4.0",
   "scripts": {
     "build": "tsc",
+    "test": "node --import tsx ./src/*.test.ts",
     "publish": "npm run build && npm publish --access=public"
   },
   "devDependencies": {
@@ -30,7 +31,7 @@
     "typescript": "5.5"
   },
   "dependencies": {
-    "symbol-sdk": "^3.2.2",
+    "symbol-sdk": "../sdk/symbol/sdk/javascript",
     "ws": "^8.18.0",
     "zeromq": "^6.0.8"
   }

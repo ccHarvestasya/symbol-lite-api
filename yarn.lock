@@ -265,10 +265,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:~1.4.0":
-  version: 1.4.0
-  resolution: "@noble/hashes@npm:1.4.0"
-  checksum: 10c0/8c3f005ee72e7b8f9cff756dfae1241485187254e3f743873e22073d63906863df5d4f13d441b7530ea614b7a093f0d889309f28b59850f33b66cb26a779a4a5
+"@noble/hashes@npm:~1.5.0":
+  version: 1.5.0
+  resolution: "@noble/hashes@npm:1.5.0"
+  checksum: 10c0/1b46539695fbfe4477c0822d90c881a04d4fa2921c08c552375b444a48cac9930cb1ee68de0a3c7859e676554d0f3771999716606dc4d8f826e414c11692cdd9
   languageName: node
   linkType: hard
 
@@ -627,9 +627,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bitcore-lib@npm:^10.0.36":
-  version: 10.5.2
-  resolution: "bitcore-lib@npm:10.5.2"
+"bitcore-lib@npm:^10.5.3":
+  version: 10.5.3
+  resolution: "bitcore-lib@npm:10.5.3"
   dependencies:
     bech32: "npm:=2.0.0"
     bn.js: "npm:=4.11.8"
@@ -638,19 +638,19 @@ __metadata:
     elliptic: "npm:^6.5.3"
     inherits: "npm:=2.0.1"
     lodash: "npm:^4.17.20"
-  checksum: 10c0/cb89678900ec08c4738800a0af7112b639256901849983761e2315b8b542cb80295326e0a68bba025344c05d999677b5c4d1c344319d564164604bd634935985
+  checksum: 10c0/1508def7d8e95df72ff37fc4dbf74154abc71e37e82b0f77f041e3a6b34f15f4c30fc4367e5f8f96d3715c1cd1b89538e6522716b365712f1de3ab2ee1881f6a
   languageName: node
   linkType: hard
 
-"bitcore-mnemonic@npm:~10.0.11":
-  version: 10.0.36
-  resolution: "bitcore-mnemonic@npm:10.0.36"
+"bitcore-mnemonic@npm:~10.5.2":
+  version: 10.5.3
+  resolution: "bitcore-mnemonic@npm:10.5.3"
   dependencies:
-    bitcore-lib: "npm:^10.0.36"
+    bitcore-lib: "npm:^10.5.3"
     unorm: "npm:^1.4.1"
   peerDependencies:
     bitcore-lib: "*"
-  checksum: 10c0/b17c99fc2d857f92a98a7274f78a1aa2fa75a1b1083f55ac04cfc99cb52eae6df7feeac8ff21351a58501fb01fa97de60fdc7f93d72194f93755fa7992b4d03f
+  checksum: 10c0/ff438ce62aac2b1d1e81aaeceed185cd40e6d10e608bc39d1c187a1b8bae893b4317932fc973112be56f2bccf64867edc92a3c1b96438b17c85eb52b09af9d22
   languageName: node
   linkType: hard
 
@@ -2340,18 +2340,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"symbol-sdk@npm:^3.2.2":
-  version: 3.2.2
-  resolution: "symbol-sdk@npm:3.2.2"
+"symbol-sdk@file:../sdk/symbol/sdk/javascript::locator=symbol-zeromq%40workspace%3A.":
+  version: 3.2.2-h
+  resolution: "symbol-sdk@file:../sdk/symbol/sdk/javascript#../sdk/symbol/sdk/javascript::hash=edaa5d&locator=symbol-zeromq%40workspace%3A."
   dependencies:
-    "@noble/hashes": "npm:~1.4.0"
-    bitcore-mnemonic: "npm:~10.0.11"
+    "@noble/hashes": "npm:~1.5.0"
+    bitcore-mnemonic: "npm:~10.5.2"
     ripemd160: "npm:~2.0.2"
     symbol-crypto-wasm-node: "npm:^0.1.1"
   dependenciesMeta:
     symbol-crypto-wasm-node:
       optional: true
-  checksum: 10c0/23e22641ceb6f0ce06c3f4a3343677d116b0575478398571c794898411d7185044a43067fc8e136cf32be23d2f2d6242ad329cc34017dc6820cd0eda90e64f1b
+  checksum: 10c0/358204b0ea165c710ff6f3a17d55c4968a04951c037493e79769be37d75b77e6d72dbfc63ec15e9a95a81672b9515e3b6de6298588af821faba79a255e82b0b3
   languageName: node
   linkType: hard
 
@@ -2368,7 +2368,7 @@ __metadata:
     eslint: "npm:8.57.0"
     eslint-config-prettier: "npm:^9.1.0"
     prettier: "npm:^3.3.3"
-    symbol-sdk: "npm:^3.2.2"
+    symbol-sdk: ../sdk/symbol/sdk/javascript
     tsx: "npm:^4.19.1"
     typescript: "npm:5.5"
     ws: "npm:^8.18.0"

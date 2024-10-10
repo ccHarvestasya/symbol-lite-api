@@ -46,7 +46,7 @@ export class SymbolWebSocketServer {
    */
   subscribe = (uuid: string, topic: string) => {
     if (topic === 'block') this.zmqClients.get(uuid)!.subscribeBlock()
-    else if (topic === 'finalizedBlock') this.zmqClients.get(uuid)!.subscribeFinalized()
+    else if (topic === 'finalizedBlock') this.zmqClients.get(uuid)!.subscribeFinalizedBlock()
     else if (topic === 'confirmedAdded') this.zmqClients.get(uuid)!.subscribeConfirmedAdded()
   }
 
@@ -57,7 +57,7 @@ export class SymbolWebSocketServer {
    */
   unsubscribe = (uuid: string, topic: string) => {
     if (topic === 'block') this.zmqClients.get(uuid)!.unsubscribeBlock()
-    else if (topic === 'finalizedBlock') this.zmqClients.get(uuid)!.unsubscribeFinalized()
+    else if (topic === 'finalizedBlock') this.zmqClients.get(uuid)!.unsubscribeFinalizedBlock()
     else if (topic === 'confirmedAdded') this.zmqClients.get(uuid)!.unsubscribeConfirmedAdded()
   }
 
