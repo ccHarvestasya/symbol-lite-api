@@ -1,5 +1,5 @@
 import { ChainInfo, ChainStatistics, FinalizationStatistics } from './model/Chain.js'
-import { NodeInfo, NodePeers, NodeTime, NodeUnlockedAccount } from './model/Node.js'
+import { NodeDiagnosticCounter, NodeInfo, NodePeers, NodeTime, NodeUnlockedAccount } from './model/Node.js'
 import { SslSocket } from './SslSocket.js'
 
 export class Catapult extends SslSocket {
@@ -147,39 +147,24 @@ export class Catapult extends SslSocket {
     return nodeUnlockedAccount
   }
 
-  // /**
-  //  * DiagnosticCounters取得
-  //  * @returns 診断カウンター
-  //  */
-  // async getDiagnosticCounters(): Promise<DiagnosticCounter[] | undefined> {
-  //   let diagnosticCounters: DiagnosticCounter[] | undefined
-  //   try {
-  //     // ピア問合せ
-  //     const socketData = await this.requestSocket(this.PacketType.DIAGNOSTIC_COUNTERS)
-  //     if (!socketData) return undefined
-  //     const nodeBufferView = new PacketBuffer(Buffer.from(socketData))
-  //     // 編集
-  //     diagnosticCounters = []
-  //     while (nodeBufferView.index < nodeBufferView.length) {
-  //       let itemNameBin = nodeBufferView.readBigUInt64LE()
-  //       let itemNameWork = ''
-  //       for (let i = 0; i < 13; i++) {
-  //         const byte = itemNameBin % 27n
-  //         const char = byte === 0n ? ' ' : Buffer.from((64n + byte).toString(16), 'hex').toString('utf8')
-  //         itemNameWork = char + itemNameWork
-  //         itemNameBin /= 27n
-  //       }
+  /**
+   * DiagnosticCounters取得
+   * @returns 診断カウンター
+   */
+  async getDiagnosticCounter(): Promise<NodeDiagnosticCounter | undefined> {
+    let diagnosticCounter: NodeDiagnosticCounter | undefined
+    try {
+      // ピア問合せ
+      const socketData = await this.request(this.PacketType.DIAGNOSTIC_COUNTERS)
+      if (socketData) diagnosticCounter = NodeDiagnosticCounter.deserialize(socketData)
+      // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
+      this.close()
+    } catch (e) {
+      console.error(e)
+    }
 
-  //       const itemValueWork = nodeBufferView.readBigUInt64LE()
-  //       const dCounter = new DiagnosticCounter(itemNameWork, itemValueWork.toString())
-  //       diagnosticCounters.push(dCounter)
-  //     }
-  //   } catch {
-  //     diagnosticCounters = undefined
-  //   }
-
-  //   return diagnosticCounters
-  // }
+    return diagnosticCounter
+  }
 
   // /**
   //  * トランザクションアナウンス

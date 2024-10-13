@@ -163,3 +163,33 @@ export class NodeUnlockedAccount {
     }
   }
 }
+
+export class NodeDiagnosticCounter {
+  constructor(public diagnosticCountersMap: Map<string, bigint>) {}
+
+  static deserialize(payload: Uint8Array) {
+    const nodeBufferView = new PacketBuffer(Buffer.from(payload))
+    const diagnosticCounterMap = new Map<string, bigint>()
+    while (nodeBufferView.index < nodeBufferView.length) {
+      let itemNameBin = nodeBufferView.readBigUInt64LE()
+      let itemNameWork = ''
+      for (let i = 0; i < 13; i++) {
+        const byte = itemNameBin % 27n
+        const char = byte === 0n ? ' ' : Buffer.from((64n + byte).toString(16), 'hex').toString('utf8')
+        itemNameWork = char + itemNameWork
+        itemNameBin /= 27n
+      }
+      const itemValueWork = nodeBufferView.readBigUInt64LE()
+      diagnosticCounterMap.set(itemNameWork.trim(), itemValueWork)
+    }
+    return new NodeDiagnosticCounter(diagnosticCounterMap)
+  }
+
+  toJson() {
+    let row = '{'
+    for (const [key, val] of this.diagnosticCountersMap) row += `"${key}": "${val.toString()}",`
+    row = row.slice(0, row.length - 1)
+    row += '}'
+    return JSON.parse(row)
+  }
+}
