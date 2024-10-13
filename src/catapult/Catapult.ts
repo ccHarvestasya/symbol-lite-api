@@ -1,5 +1,5 @@
 import { ChainInfo, ChainStatistics, FinalizationStatistics } from './model/Chain.js'
-import { NodeInfo, NodePeers } from './model/Node.js'
+import { NodeInfo, NodePeers, NodeTime } from './model/Node.js'
 import { SslSocket } from './SslSocket.js'
 
 export class Catapult extends SslSocket {
@@ -108,8 +108,25 @@ export class Catapult extends SslSocket {
     } catch (e) {
       console.error(e)
     }
-
     return nodePeers
+  }
+
+  /**
+   * /node/time 同等の値を持つクラスを取得
+   * @returns NodeTime
+   */
+  async getNodeTime() {
+    let nodeTime: NodeTime | undefined
+    try {
+      // ピア問合せ
+      const socketData = await this.request(this.PacketType.TIME_SYNC_NETWORK_TIME)
+      if (socketData) nodeTime = NodeTime.deserialize(socketData)
+      // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
+      this.close()
+    } catch (e) {
+      console.error(e)
+    }
+    return nodeTime
   }
 
   // /**
@@ -135,29 +152,6 @@ export class Catapult extends SslSocket {
   //   }
 
   //   return nodeUnlockedAccount
-  // }
-
-  // /**
-  //  * NodeTime取得
-  //  * @returns 成功: NodeTime, 失敗: undefined
-  //  */
-  // async getNodeTime() {
-  //   let nodeTime: NodeTime | undefined
-  //   try {
-  //     // ピア問合せ
-  //     const socketData = await this.requestSocket(this.PacketType.TIME_SYNC_NETWORK_TIME)
-  //     if (!socketData) return
-  //     // 編集
-  //     const nodeBufferView = Buffer.from(socketData)
-  //     nodeTime = new NodeTime({
-  //       sendTimestamp: nodeBufferView.readBigUInt64LE(0).toString(),
-  //       receiveTimestamp: nodeBufferView.readBigUInt64LE(8).toString(),
-  //     })
-  //   } catch {
-  //     nodeTime = undefined
-  //   }
-
-  //   return nodeTime
   // }
 
   // /**

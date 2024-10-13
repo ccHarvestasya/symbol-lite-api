@@ -121,3 +121,24 @@ export class NodePeer {
     }
   }
 }
+
+export class NodeTime {
+  constructor(
+    public sendTimestamp: string,
+    public receiveTimestamp: string
+  ) {}
+
+  static deserialize(payload: Uint8Array) {
+    const nodeBufferView = Buffer.from(payload)
+    return new NodeTime(nodeBufferView.readBigUInt64LE(0).toString(), nodeBufferView.readBigUInt64LE(8).toString())
+  }
+
+  toJson() {
+    return {
+      communicationTimestamps: {
+        sendTimestamp: this.sendTimestamp,
+        receiveTimestamp: this.receiveTimestamp,
+      },
+    }
+  }
+}

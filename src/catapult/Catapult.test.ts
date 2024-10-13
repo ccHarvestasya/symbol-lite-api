@@ -3,8 +3,6 @@ import { describe, it, mock } from 'node:test'
 import { Catapult } from './Catapult.js'
 import assert from 'node:assert'
 import { utils } from 'symbol-sdk'
-import { ChainInfo } from './model/Chain.js'
-import { NodeInfo } from './model/Node.js'
 
 describe('Catapultのテスト', () => {
   it('getChainInfoのテスト', async () => {
@@ -102,5 +100,28 @@ describe('Catapultのテスト', () => {
     assert.equal(res.nodePeers[0].networkIdentifier, 152)
     assert.equal(res.nodePeers[0].host, '20.48.92.124 # Use your domain or IP address')
     assert.equal(res.nodePeers[0].friendlyName, 'ph-vm # Choose a preferred name')
+  })
+
+  it('getNodeTimeのテスト', async () => {
+    const catapult = new Catapult('cert', '')
+
+    /** モック */
+    mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
+      let data: Uint8Array | undefined
+      if (packetType === 0x1_20) {
+        data = utils.hexToUint8('12deea570e00000010deea570e000000')
+      } else {
+        console.error(packetType)
+      }
+      return data
+    })
+
+    /** テスト */
+    const res = await catapult.getNodeTime()
+
+    /** 検証 */
+    assert.ok(res)
+    assert.equal(res.sendTimestamp, 61604552210)
+    assert.equal(res.receiveTimestamp, 61604552208)
   })
 })

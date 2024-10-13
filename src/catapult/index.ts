@@ -1,4 +1,4 @@
 import { Catapult } from './Catapult.js'
 
 const catapult = new Catapult('cert', 'sakia.harvestasya.com')
-console.log((await catapult.getNodePeers())?.toJson())
+console.log((await catapult.getNodeTime())?.toJson())
