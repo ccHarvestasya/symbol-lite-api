@@ -1,11 +1,12 @@
 import { ChainInfo, ChainStatistics, FinalizationStatistics } from './model/Chain.js'
+import { NodeInfo, NodePeers } from './model/Node.js'
 import { SslSocket } from './SslSocket.js'
 
 export class Catapult extends SslSocket {
   // private STATE_PATH_BASE_TYPE = 0x200
   /** パケットタイプ */
   private PacketType = {
-    CHAIN_STATISTICS: 5,
+    CHAIN_STATISTICS: 0x0_05,
     NODE_DISCOVERY_PULL_PING: 0x1_11,
     NODE_DISCOVERY_PULL_PEERS: 0x1_13,
     FINALIZATION_STATISTICS: 0x1_32,
@@ -25,6 +26,10 @@ export class Catapult extends SslSocket {
     // MOSAIC_RESTRICTIONS_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x51,
   }
 
+  /**
+   * /chain/info 同等の値を持つクラスを取得
+   * @returns ChainInfo
+   */
   async getChainInfo() {
     let chainInfo: ChainInfo | undefined
     try {
@@ -42,7 +47,7 @@ export class Catapult extends SslSocket {
    * ChainStatistics取得
    * @returns 成功: ChainStatistics, 失敗: undefined
    */
-  async getChainStatistics() {
+  private async getChainStatistics() {
     let chainStatistics: ChainStatistics | undefined
     try {
       const socketData = await this.request(this.PacketType.CHAIN_STATISTICS)
@@ -58,7 +63,7 @@ export class Catapult extends SslSocket {
    * FinalizationStatistics取得
    * @returns 成功: FinalizationStatistics, 失敗: undefined
    */
-  async getFinalizationStatistics() {
+  private async getFinalizationStatistics() {
     let finalizationStatistics: FinalizationStatistics | undefined
     try {
       const socketData = await this.request(this.PacketType.FINALIZATION_STATISTICS)
@@ -70,164 +75,42 @@ export class Catapult extends SslSocket {
     return finalizationStatistics
   }
 
-  // /**
-  //  * NodePeers取得
-  //  * @returns 成功: NodePeer[], 失敗: undefined
-  //  */
-  // async getNodePeers(): Promise<NodePeer[] | undefined> {
-  //   let nodePeers: NodePeer[] | undefined = []
-  //   try {
-  //     // ピア問合せ
-  //     const socketData = await this.requestSocket(this.PacketType.NODE_DISCOVERY_PULL_PEERS)
-  //     if (!socketData) return undefined
-  //     const nodeBufferView = new PacketBuffer(Buffer.from(socketData))
-  //     // 編集
-  //     while (nodeBufferView.index < nodeBufferView.length) {
-  //       const version = nodeBufferView.readUInt32LE(4)
-  //       const publicKey = nodeBufferView.readHexString(32).toUpperCase()
-  //       const networkGenerationHashSeed = nodeBufferView.readHexString(32).toUpperCase()
-  //       const roles = nodeBufferView.readUInt32LE()
-  //       const port = nodeBufferView.readUInt16LE()
-  //       const networkIdentifier = nodeBufferView.readUInt8()
-  //       const hostLength = nodeBufferView.readUInt8()
-  //       const friendlyNameLength = nodeBufferView.readUInt8()
-  //       const host = nodeBufferView.readString(hostLength)
-  //       const friendlyName = nodeBufferView.readString(friendlyNameLength)
+  /**
+   * /node/info 同等の値を持つクラスを取得
+   * @returns NodeInfo
+   */
+  async getNodeInfo(): Promise<NodeInfo | undefined> {
+    let nodeInfo: NodeInfo | undefined
+    try {
+      // ピア問合せ
+      const socketData = await this.request(this.PacketType.NODE_DISCOVERY_PULL_PING)
+      if (socketData) nodeInfo = NodeInfo.deserialize(socketData, this._x509Certificate)
+      // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
+      this.close()
+    } catch (e) {
+      console.error(e)
+    }
+    return nodeInfo
+  }
 
-  //       const nodePeer = new NodePeer(
-  //         version,
-  //         publicKey,
-  //         networkGenerationHashSeed,
-  //         roles,
-  //         port,
-  //         networkIdentifier,
-  //         host,
-  //         friendlyName
-  //       )
-  //       nodePeers.push(nodePeer)
-  //     }
-  //   } catch {
-  //     nodePeers = undefined
-  //   }
+  /**
+   * /node/peers 同等の値を持つクラスを取得
+   * @returns NodePeers
+   */
+  async getNodePeers(): Promise<NodePeers | undefined> {
+    let nodePeers: NodePeers | undefined
+    try {
+      // ピア問合せ
+      const socketData = await this.request(this.PacketType.NODE_DISCOVERY_PULL_PEERS)
+      if (socketData) nodePeers = NodePeers.deserialize(socketData)
+      // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
+      this.close()
+    } catch (e) {
+      console.error(e)
+    }
 
-  //   return nodePeers
-  // }
-
-  // /**
-  //  * NodeInfo取得
-  //  * @returns 成功: NodeInfo, 失敗: undefined
-  //  */
-  // async getNodeInfo(): Promise<NodeInfo | undefined> {
-  //   let nodeInfo: NodeInfo | undefined
-  //   try {
-  //     // ピア問合せ
-  //     const socketData = await this.requestSocket(this.PacketType.NODE_DISCOVERY_PULL_PING)
-  //     if (!socketData) return undefined
-  //     // 編集
-  //     const nodeBufferView = new PacketBuffer(Buffer.from(socketData))
-  //     const version = nodeBufferView.readUInt32LE(4)
-  //     const publicKey = nodeBufferView.readHexString(32).toUpperCase()
-  //     const networkGenerationHashSeed = nodeBufferView.readHexString(32).toUpperCase()
-  //     const roles = nodeBufferView.readUInt32LE()
-  //     const port = nodeBufferView.readUInt16LE()
-  //     const networkIdentifier = nodeBufferView.readUInt8()
-  //     const hostLength = nodeBufferView.readUInt8()
-  //     const friendlyNameLength = nodeBufferView.readUInt8()
-  //     const host = nodeBufferView.readString(hostLength)
-  //     const friendlyName = nodeBufferView.readString(friendlyNameLength)
-  //     // 証明書有効期限、ノード公開鍵取得
-  //     const nodePublicKey = this._x509Certificate!.publicKey.export({
-  //       format: 'der',
-  //       type: 'spki',
-  //     })
-  //       .toString('hex', 12, 44)
-  //       .toUpperCase()
-  //     const { validTo } = this._x509Certificate!
-  //     const validToDate = new Date(validTo)
-  //     const certificateExpirationDate = validToDate
-  //     nodeInfo = new NodeInfo(
-  //       version,
-  //       publicKey,
-  //       networkGenerationHashSeed,
-  //       roles,
-  //       port,
-  //       networkIdentifier,
-  //       host,
-  //       friendlyName,
-  //       nodePublicKey,
-  //       certificateExpirationDate
-  //     )
-  //   } catch {
-  //     nodeInfo = undefined
-  //   }
-
-  //   return nodeInfo
-  // }
-
-  // /**
-  //  * ブロック情報取得(/chain/info同等)
-  //  */
-  // async getChainInfo() {
-  //   const chainStat = await this.getChainStatistics()
-  //   const finalStat = await this.getFinalizationStatistics()
-  //   const latestFinalizedBlock = new LatestFinalizedBlock(
-  //     finalStat!.epoch,
-  //     finalStat!.point,
-  //     finalStat!.height,
-  //     finalStat!.hash
-  //   )
-  //   const chainInfo = new ChainInfo(chainStat!.height, chainStat!.scoreHigh, chainStat!.scoreLow, latestFinalizedBlock)
-  //   return chainInfo
-  // }
-
-  // /**
-  //  * ChainStatistics取得
-  //  * @returns 成功: ChainStatistics, 失敗: undefined
-  //  */
-  // async getChainStatistics() {
-  //   let chainStatistics: ChainStatistics | undefined
-  //   try {
-  //     const socketData = await this.requestSocket(this.PacketType.CHAIN_STATISTICS)
-  //     if (!socketData) return
-  //     const bufferView = new PacketBuffer(Buffer.from(socketData))
-  //     const height = bufferView.readBigUInt64LE()
-  //     const finalizedHeight = bufferView.readBigUInt64LE()
-  //     const scoreHigh = bufferView.readBigUInt64LE()
-  //     const scoreLow = bufferView.readBigUInt64LE()
-  //     chainStatistics = new ChainStatistics(
-  //       height.toString(),
-  //       finalizedHeight.toString(),
-  //       scoreHigh.toString(),
-  //       scoreLow.toString()
-  //     )
-  //   } catch {
-  //     chainStatistics = undefined
-  //   }
-
-  //   return chainStatistics
-  // }
-
-  // /**
-  //  * FinalizationStatistics取得
-  //  * @returns 成功: FinalizationStatistics, 失敗: undefined
-  //  */
-  // async getFinalizationStatistics() {
-  //   let finalizationStatistics: FinalizationStatistics | undefined
-  //   try {
-  //     const socketData = await this.requestSocket(this.PacketType.FINALIZATION_STATISTICS)
-  //     if (!socketData) return
-  //     const bufferView = new PacketBuffer(Buffer.from(socketData))
-  //     const epoch = bufferView.readUInt32LE()
-  //     const point = bufferView.readUInt32LE()
-  //     const height = bufferView.readBigUInt64LE()
-  //     const hash = bufferView.readHexString(32).toUpperCase()
-  //     finalizationStatistics = new FinalizationStatistics(epoch, point, height.toString(), hash)
-  //   } catch {
-  //     finalizationStatistics = undefined
-  //   }
-
-  //   return finalizationStatistics
-  // }
+    return nodePeers
+  }
 
   // /**
   //  * NodeUnlockedAccount取得

@@ -33,7 +33,7 @@ export abstract class SslSocket {
     this._connectionOptions = {
       host,
       port,
-      timeout,
+      timeout: timeout,
       cert: fs.readFileSync(`${certPath}/node.full.crt.pem`),
       key: fs.readFileSync(`${certPath}/node.key.pem`),
       rejectUnauthorized: false,
