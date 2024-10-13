@@ -124,4 +124,29 @@ describe('Catapultのテスト', () => {
     assert.equal(res.sendTimestamp, 61604552210)
     assert.equal(res.receiveTimestamp, 61604552208)
   })
+
+  it('getNodeUnlockedAccountのテスト', async () => {
+    const catapult = new Catapult('cert', '')
+
+    /** モック */
+    mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
+      let data: Uint8Array | undefined
+      if (packetType === 0x3_04) {
+        data = utils.hexToUint8(
+          '22ce1a6a3b8ae2dea7e56cc76b544120113c27e03eec51c3f0f8d266e72ce73a7ae030aa4da550a1c9b714aa1ade789c4fd7e2b16c1d3c04420dd261c5dfbfdc'
+        )
+      } else {
+        console.error(packetType)
+      }
+      return data
+    })
+
+    /** テスト */
+    const res = await catapult.getNodeUnlockedAccount()
+
+    /** 検証 */
+    assert.ok(res)
+    assert.equal(res.unlockedAccount[0], '22CE1A6A3B8AE2DEA7E56CC76B544120113C27E03EEC51C3F0F8D266E72CE73A')
+    assert.equal(res.unlockedAccount[1], '7AE030AA4DA550A1C9B714AA1ADE789C4FD7E2B16C1D3C04420DD261C5DFBFDC')
+  })
 })

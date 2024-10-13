@@ -144,3 +144,22 @@ export class NodeTime {
     }
   }
 }
+
+export class NodeUnlockedAccount {
+  constructor(public unlockedAccount: string[] = []) {}
+
+  static deserialize(payload: Uint8Array) {
+    const nodeBufferView = new PacketBuffer(Buffer.from(payload))
+    const unlockedAccount = []
+    while (nodeBufferView.index < nodeBufferView.length) {
+      unlockedAccount.push(nodeBufferView.readHexString(32).toUpperCase())
+    }
+    return new NodeUnlockedAccount(unlockedAccount)
+  }
+
+  toJson() {
+    return {
+      unlockedAccount: [...this.unlockedAccount],
+    }
+  }
+}

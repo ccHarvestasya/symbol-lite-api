@@ -1,5 +1,5 @@
 import { ChainInfo, ChainStatistics, FinalizationStatistics } from './model/Chain.js'
-import { NodeInfo, NodePeers, NodeTime } from './model/Node.js'
+import { NodeInfo, NodePeers, NodeTime, NodeUnlockedAccount } from './model/Node.js'
 import { SslSocket } from './SslSocket.js'
 
 export class Catapult extends SslSocket {
@@ -129,30 +129,23 @@ export class Catapult extends SslSocket {
     return nodeTime
   }
 
-  // /**
-  //  * NodeUnlockedAccount取得
-  //  * @returns 成功: NodeUnlockedAccount, 失敗: undefined
-  //  */
-  // async getNodeUnlockedAccount() {
-  //   let nodeUnlockedAccount: NodeUnlockedAccount | undefined
-  //   try {
-  //     // ピア問合せ
-  //     const socketData = await this.requestSocket(this.PacketType.UNLOCKED_ACCOUNTS)
-  //     if (!socketData) return
-  //     // 編集
-  //     const nodeBufferView = new PacketBuffer(Buffer.from(socketData))
-  //     const unlockedAccount: string[] = []
-  //     while (nodeBufferView.index < nodeBufferView.length) {
-  //       unlockedAccount.push(nodeBufferView.readHexString(32).toUpperCase())
-  //     }
-
-  //     nodeUnlockedAccount = new NodeUnlockedAccount(unlockedAccount)
-  //   } catch {
-  //     nodeUnlockedAccount = undefined
-  //   }
-
-  //   return nodeUnlockedAccount
-  // }
+  /**
+   * NodeUnlockedAccount取得
+   * @returns 成功: NodeUnlockedAccount, 失敗: undefined
+   */
+  async getNodeUnlockedAccount() {
+    let nodeUnlockedAccount: NodeUnlockedAccount | undefined
+    try {
+      // ピア問合せ
+      const socketData = await this.request(this.PacketType.UNLOCKED_ACCOUNTS)
+      if (socketData) nodeUnlockedAccount = NodeUnlockedAccount.deserialize(socketData)
+      // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
+      this.close()
+    } catch (e) {
+      console.error(e)
+    }
+    return nodeUnlockedAccount
+  }
 
   // /**
   //  * DiagnosticCounters取得
