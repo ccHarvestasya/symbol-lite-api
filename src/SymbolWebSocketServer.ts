@@ -24,8 +24,8 @@ export class SymbolWebSocketServer {
           if (recvData['subscribe']) this.subscribe(recvData['uid'], recvData['subscribe'])
           else if (recvData['unsubscribe']) this.unsubscribe(recvData['uid'], recvData['unsubscribe'])
           else throw Error()
-        } catch (err: any) {
-          if (err && err.message) ws.close(1013, err.message)
+        } catch (err: unknown) {
+          if (err instanceof Error && err.message) ws.close(1013, err.message)
           else ws.close()
         }
       })

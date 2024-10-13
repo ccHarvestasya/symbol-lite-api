@@ -1,10 +1,7 @@
 import { Hash256, utils } from 'symbol-sdk'
-import { descriptors, models, SymbolFacade } from 'symbol-sdk/symbol'
-import zmq, { Subscriber } from 'zeromq'
-import { WsBlock } from './models/WsBlock.js'
-import { RawData, WebSocket, WebSocketServer } from 'ws'
-import { WsFinalizedBlock } from './models/WsFinalizedBlock.js'
-import { appendFileSync, writeFileSync } from 'fs'
+import { Subscriber } from 'zeromq'
+import { WebSocket } from 'ws'
+import { models } from 'symbol-sdk/symbol'
 
 export class SymbolZeroMq {
   private ws: WebSocket
@@ -13,7 +10,7 @@ export class SymbolZeroMq {
 
   private blockMarker = Buffer.from(utils.hexToUint8('9FF2D8E480CA6A49').reverse())
   private finalizedBlockMarker = Buffer.from(utils.hexToUint8('4D4832A031CE7954').reverse())
-  private dropMarker = Buffer.from(utils.hexToUint8('5C20D68AEE25B0B0').reverse())
+  // private dropMarker = Buffer.from(utils.hexToUint8('5C20D68AEE25B0B0').reverse())
   private confirmedAddedMarker = Buffer.from(utils.hexToUint8('61'))
   private unconfirmedAddedMarker = Buffer.from(utils.hexToUint8('75'))
   private unconfirmedRemovedMarker = Buffer.from(utils.hexToUint8('72'))
@@ -22,6 +19,12 @@ export class SymbolZeroMq {
   private cosignatureMarker = Buffer.from(utils.hexToUint8('63'))
   private statusMarker = Buffer.from(utils.hexToUint8('73'))
 
+  /**
+   * コンストラクタ
+   * @param ws WebSocket
+   * @param host ZeroMQ接続ホスト
+   * @param port ZeroMQ接続ポート
+   */
   constructor(ws: WebSocket, host = 'localhost', port = 7902) {
     this.ws = ws
     this.sock = new Subscriber()
@@ -30,215 +33,279 @@ export class SymbolZeroMq {
     console.log(`Connecting to ${this.tcpAddress}`)
   }
 
-  /** 開始 */
-  start = async () => {
-    while (true) {
-      const receiveData = await this.sock.receive()
-      const topic = receiveData[0]
-      console.log(receiveData)
-      console.log('topic', topic)
+  /**
+   * ZeroMQ開始
+   */
+  start = async (): Promise<void> => {
+    // eslint-disable-next-line no-constant-condition
+    while (true) this.sendWebSocket(await this.sock.receive())
+  }
 
-      if (topic.equals(this.blockMarker)) this.notifyBlock(receiveData[1], receiveData[2], receiveData[3])
-      else if (topic.equals(this.finalizedBlockMarker)) this.notifyfinalizedBlock(receiveData[1])
-      else if (topic.readInt8() === this.confirmedAddedMarker.readInt8())
-        this.notifyConfirmedAdded(receiveData[1], receiveData[2], receiveData[3], receiveData[4])
+  /**
+   * 切断
+   */
+  close = (): void => this.sock.disconnect(this.tcpAddress)
+
+  /**
+   * 購読開始
+   * @param topic トピック
+   */
+  subscribe = (topic: string): void => {
+    if (topic === 'block') this.sock.subscribe(this.blockMarker)
+    else if (topic === 'finalizedBlock') this.sock.subscribe(this.finalizedBlockMarker)
+    else if (topic === 'confirmedAdded') this.sock.subscribe(this.confirmedAddedMarker)
+    else if (topic === 'unconfirmedAdded') this.sock.subscribe(this.unconfirmedAddedMarker)
+    else if (topic === 'unconfirmedRemoved') this.sock.subscribe(this.unconfirmedRemovedMarker)
+    else if (topic === 'partialAdded') this.sock.subscribe(this.partialAddedMarker)
+    else if (topic === 'partialRemoved') this.sock.subscribe(this.partialRemovedMarker)
+    else if (topic === 'cosignature') this.sock.subscribe(this.cosignatureMarker)
+    else if (topic === 'status') this.sock.subscribe(this.statusMarker)
+  }
+
+  /**
+   * 購読終了
+   * @param topic トピック
+   */
+  unsubscribe = (topic: string): void => {
+    if (topic === 'block') this.sock.unsubscribe(this.blockMarker)
+    else if (topic === 'finalizedBlock') this.sock.unsubscribe(this.finalizedBlockMarker)
+    else if (topic === 'confirmedAdded') this.sock.unsubscribe(this.confirmedAddedMarker)
+    else if (topic === 'unconfirmedAdded') this.sock.unsubscribe(this.unconfirmedAddedMarker)
+    else if (topic === 'unconfirmedRemoved') this.sock.unsubscribe(this.unconfirmedRemovedMarker)
+    else if (topic === 'partialAdded') this.sock.unsubscribe(this.partialAddedMarker)
+    else if (topic === 'partialRemoved') this.sock.unsubscribe(this.partialRemovedMarker)
+    else if (topic === 'cosignature') this.sock.unsubscribe(this.cosignatureMarker)
+    else if (topic === 'status') this.sock.unsubscribe(this.statusMarker)
+  }
+
+  /**
+   * WebSocket送信
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  sendWebSocket = (receiveDatas: Buffer[]) => {
+    const topic = receiveDatas[0]
+
+    console.debug(topic.toString('utf8'))
+    for (const rcv of receiveDatas) {
+      console.debug(rcv.toString('hex'))
     }
+
+    if (topic.equals(this.blockMarker)) this.sendBlock(receiveDatas)
+    else if (topic.equals(this.finalizedBlockMarker)) this.sendFinalizedBlock(receiveDatas)
+    else if (topic.readInt8() === this.confirmedAddedMarker.readInt8()) this.sendConfirmedAdded(receiveDatas)
+    else if (topic.readInt8() === this.unconfirmedAddedMarker.readInt8()) this.sendUnconfirmedAdded(receiveDatas)
+    else if (topic.readInt8() === this.unconfirmedRemovedMarker.readInt8()) this.sendUnconfirmedRemoved(receiveDatas)
+    else if (topic.readInt8() === this.partialAddedMarker.readInt8()) this.sendPartialAdded(receiveDatas)
+    else if (topic.readInt8() === this.partialRemovedMarker.readInt8()) this.sendPartialRemoved(receiveDatas)
+    else if (topic.readInt8() === this.cosignatureMarker.readInt8()) this.sendCosignature(receiveDatas)
+    else if (topic.readInt8() === this.statusMarker.readInt8()) this.sendStatus(receiveDatas)
   }
 
-  getTestData = async () => {
-    while (true) {
-      const receiveData = await this.sock.receive()
-      const topic = receiveData[0]
-      console.log(receiveData)
-      console.log('topic', topic)
+  /**
+   * WebSocket送信(ブロック)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendBlock = (receiveDatas: Buffer[]) => {
+    const blockHeaderBuf = receiveDatas[1]
+    const entityHashBuf = receiveDatas[2]
+    const generationHashBuf = receiveDatas[3]
 
-      if (topic.equals(this.blockMarker)) {
-        receiveData[1].writeInt32LE(receiveData[1].byteLength) // 先頭にあるサイズを実サイズに変更する
-        const data = models.BlockFactory.deserialize(receiveData[1]) as models.Block
-        appendFileSync('block_' + data.type.toString(), receiveData[1].toString('hex') + '\n')
-      } else if (topic.equals(this.finalizedBlockMarker)) {
-        // const data = models.FinalizedBlockHeader.deserialize(receiveData[1]) as models.FinalizedBlockHeader
-        appendFileSync('finalized', receiveData[1].toString('hex') + '\n')
-      } else if (topic.readInt8() === this.confirmedAddedMarker.readInt8()) {
-        const data = models.TransactionFactory.deserialize(receiveData[1]) as models.Transaction
-        appendFileSync('confirmedAdded_' + data.type.toString(), receiveData[1].toString('hex') + '\n')
-      } else if (topic.readInt8() === this.unconfirmedAddedMarker.readInt8()) {
-        const data = models.TransactionFactory.deserialize(receiveData[1]) as models.Transaction
-        appendFileSync('unconfirmedAdded_' + data.type.toString(), receiveData[1].toString('hex') + '\n')
-      } else if (topic.readInt8() === this.unconfirmedRemovedMarker.readInt8()) {
-        appendFileSync('unconfirmedRemoved', receiveData[1].toString('hex') + '\n')
-      } else if (topic.readInt8() === this.partialAddedMarker.readInt8()) {
-        appendFileSync('partialAdded', receiveData[1].toString('hex') + '\n')
-      } else if (topic.readInt8() === this.partialRemovedMarker.readInt8()) {
-        appendFileSync('partialRemoved', receiveData[1].toString('hex') + '\n')
-      } else if (topic.readInt8() === this.cosignatureMarker.readInt8()) {
-        appendFileSync('cosignature', receiveData[1].toString('hex') + '\n')
-      } else if (topic.readInt8() === this.statusMarker.readInt8()) {
-        appendFileSync('status', receiveData[1].toString('hex') + '\n')
-      }
-    }
-  }
+    blockHeaderBuf.writeInt32LE(blockHeaderBuf.byteLength) // 先頭にあるサイズを実サイズに変更する
+    const data = models.BlockFactory.deserialize(blockHeaderBuf) as models.Block
 
-  /** 切断 */
-  close = () => this.sock.disconnect(this.tcpAddress)
-
-  /** ブロック生成 購読開始 */
-  subscribeBlock = () => this.sock.subscribe(this.blockMarker)
-  /** ブロック生成 購読終了 */
-  unsubscribeBlock = () => this.sock.unsubscribe(this.blockMarker)
-  /** ファイナライズ 購読開始 */
-  subscribeFinalizedBlock = () => this.sock.subscribe(this.finalizedBlockMarker)
-  /** ファイナライズ 購読終了 */
-  unsubscribeFinalizedBlock = () => this.sock.unsubscribe(this.finalizedBlockMarker)
-  /** ブロック取消 購読開始 */
-  subscribeDrop = () => this.sock.subscribe(this.dropMarker)
-  /** 承認トランザクション 購読開始 */
-  subscribeConfirmedAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.confirmedAddedMarker, address.bytes]) : this.confirmedAddedMarker
-    this.sock.subscribe(marker)
-  }
-  /** 承認トランザクション 購読終了 */
-  unsubscribeConfirmedAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.confirmedAddedMarker, address.bytes]) : this.confirmedAddedMarker
-    this.sock.unsubscribe(marker)
-  }
-  /** 未承認トランザクション追加 購読開始 */
-  subscribeUnconfirmedTxAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.unconfirmedAddedMarker, address.bytes]) : this.unconfirmedAddedMarker
-    this.sock.subscribe(marker)
-  }
-  /** 未承認トランザクション追加 購読終了 */
-  unsubscribeUnconfirmedTxAdd = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.unconfirmedAddedMarker, address.bytes]) : this.unconfirmedAddedMarker
-    this.sock.unsubscribe(marker)
-  }
-  /** 未承認トランザクション削除 購読開始 */
-  subscribeUnconfirmedTxRemoved = (address?: models.Address) => {
-    const marker = address
-      ? Buffer.concat([this.unconfirmedRemovedMarker, address.bytes])
-      : this.unconfirmedRemovedMarker
-    this.sock.subscribe(marker)
-  }
-  /** 未承認トランザクション削除 購読終了 */
-  unsubscribeUnconfirmedTxDRemoved = (address?: models.Address) => {
-    const marker = address
-      ? Buffer.concat([this.unconfirmedRemovedMarker, address.bytes])
-      : this.unconfirmedRemovedMarker
-    this.sock.unsubscribe(marker)
-  }
-  /** パーシャルトランザクション追加 購読開始 */
-  subscribePartialAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.partialAddedMarker, address.bytes]) : this.partialAddedMarker
-    this.sock.subscribe(marker)
-  }
-  /** パーシャルトランザクション追加 購読終了 */
-  unsubscribePartialAdded = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.partialAddedMarker, address.bytes]) : this.partialAddedMarker
-    this.sock.unsubscribe(marker)
-  }
-  /** パーシャルトランザクション削除 購読開始 */
-  subscribePartialRemoved = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.partialRemovedMarker, address.bytes]) : this.partialRemovedMarker
-    this.sock.subscribe(marker)
-  }
-  /** パーシャルトランザクション削除 購読終了 */
-  unsubscribePartialRemoved = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.partialRemovedMarker, address.bytes]) : this.partialRemovedMarker
-    this.sock.unsubscribe(marker)
-  }
-  /** ステータス 購読開始 */
-  subscribeStatus = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.statusMarker, address.bytes]) : this.statusMarker
-    this.sock.subscribe(marker)
-  }
-  /** ステータス 購読終了 */
-  unsubscribeStatus = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.statusMarker, address.bytes]) : this.statusMarker
-    this.sock.unsubscribe(marker)
-  }
-  /** 署名 購読開始 */
-  subscribeCosignature = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.cosignatureMarker, address.bytes]) : this.cosignatureMarker
-    this.sock.subscribe(marker)
-  }
-  /** 署名 購読終了 */
-  unsubscribeCosignature = (address?: models.Address) => {
-    const marker = address ? Buffer.concat([this.cosignatureMarker, address.bytes]) : this.cosignatureMarker
-    this.sock.unsubscribe(marker)
-  }
-
-  private notifyBlock(blockHeader: Buffer, entityHash: Buffer, generationHash: Buffer) {
-    blockHeader.writeInt32LE(blockHeader.byteLength) // 先頭にあるサイズを実サイズに変更する
-    const header = models.BlockFactory.deserialize(blockHeader) as models.Block
-
-    const wsBlock: WsBlock = {
+    const wsData = {
       topic: 'block',
       data: {
-        block: {
-          signature: header.signature.toString(),
-          signerPublicKey: header.signerPublicKey.toString(),
-          version: header.version,
-          network: header.network.value,
-          type: header.type.value,
-          height: header.height.value.toString(),
-          timestamp: header.timestamp.value.toString(),
-          difficulty: header.difficulty.value.toString(),
-          proofGamma: header.generationHashProof.gamma.toString(),
-          proofVerificationHash: header.generationHashProof.verificationHash.toString(),
-          proofScalar: header.generationHashProof.scalar.toString(),
-          previousBlockHash: header.previousBlockHash.toString(),
-          transactionsHash: header.transactionsHash.toString(),
-          receiptsHash: header.receiptsHash.toString(),
-          stateHash: header.stateHash.toString(),
-          beneficiaryAddress: header.beneficiaryAddress.toString(),
-          feeMultiplier: header.feeMultiplier.value as number,
-          votingEligibleAccountsCount: (header as models.ImportanceBlockV1).votingEligibleAccountsCount,
-          harvestingEligibleAccountsCount: (
-            header as models.ImportanceBlockV1
-          ).harvestingEligibleAccountsCount?.toString(),
-          totalVotingBalance: (header as models.ImportanceBlockV1).totalVotingBalance?.value.toString(),
-          previousImportanceBlockHash: (header as models.ImportanceBlockV1).previousImportanceBlockHash?.toString(),
-        },
+        block: data.toJson(),
         meta: {
-          hash: new Hash256(entityHash).toString(),
-          generationHash: new Hash256(generationHash).toString(),
+          hash: new Hash256(entityHashBuf).toString(),
+          generationHash: new Hash256(generationHashBuf).toString(),
         },
       },
     }
 
-    this.ws.send(JSON.stringify(wsBlock))
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
   }
 
-  private notifyfinalizedBlock = (blockHeader: Buffer) => {
-    const header = models.FinalizedBlockHeader.deserialize(blockHeader) as models.FinalizedBlockHeader
+  /**
+   * WebSocket送信(ファイナライズ)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendFinalizedBlock = (receiveDatas: Buffer[]) => {
+    const finalizedBlockHeaderBuf = receiveDatas[1]
 
-    const wsFinalizedBlock: WsFinalizedBlock = {
+    const data = models.FinalizedBlockHeader.deserialize(finalizedBlockHeaderBuf) as models.FinalizedBlockHeader
+
+    const wsData = {
       topic: 'finalizedBlock',
+      data: data.toJson(),
+    }
+
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
+  }
+
+  /**
+   * WebSocket送信(承認トランザクション追加)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendConfirmedAdded = (receiveDatas: Buffer[]) => {
+    const txBuf = receiveDatas[1]
+    const hashBuf = receiveDatas[2]
+    const merkleComponentHashBuf = receiveDatas[3]
+    const heightBuf = receiveDatas[4]
+
+    const data = models.TransactionFactory.deserialize(txBuf) as models.Transaction
+
+    const wsData = {
+      topic: 'confirmedAdded',
       data: {
-        finalizationEpoch: header.round.epoch.value as number,
-        finalizationPoint: header.round.point.value as number,
-        height: header.height.value.toString(),
-        hash: header.hash.toString(),
+        transaction: data.toJson(),
+        meta: {
+          hash: new Hash256(hashBuf).toString(),
+          merkleComponentHash: new Hash256(merkleComponentHashBuf).toString(),
+          height: models.Height.deserialize(heightBuf).value.toString(),
+        },
       },
     }
 
-    this.ws.send(JSON.stringify(wsFinalizedBlock))
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
   }
 
-  private notifyConfirmedAdded = (tranBuffer: Buffer, hash: Buffer, merkleComponentHash: Buffer, height: Buffer) => {
-    const tran = models.TransactionFactory.deserialize(tranBuffer) as models.Transaction
-    console.log(tran.toString())
+  /**
+   * WebSocket送信(未承認トランザクション追加)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendUnconfirmedAdded = (receiveDatas: Buffer[]) => {
+    const txBuf = receiveDatas[1]
+    const hashBuf = receiveDatas[2]
+    const merkleComponentHashBuf = receiveDatas[3]
+    const heightBuf = receiveDatas[4]
+
+    const data = models.TransactionFactory.deserialize(txBuf) as models.Transaction
+
+    const wsData = {
+      topic: 'unconfirmedAdded',
+      data: {
+        transaction: data.toJson(),
+        meta: {
+          hash: new Hash256(hashBuf).toString(),
+          merkleComponentHash: new Hash256(merkleComponentHashBuf).toString(),
+          height: models.Height.deserialize(heightBuf).value.toString(),
+        },
+      },
+    }
+
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
   }
 
-  private notifyUnconfirmedAdded = () => {}
+  /**
+   * WebSocket送信(未承認トランザクション削除)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendUnconfirmedRemoved = (receiveDatas: Buffer[]) => {
+    const hashBuf = receiveDatas[1]
 
-  private notifyUnconfirmedRemoved = () => {}
+    const wsData = {
+      topic: 'unconfirmedRemoved',
+      data: {
+        meta: {
+          hash: new Hash256(hashBuf).toString(),
+        },
+      },
+    }
 
-  private notifyPartialAdded = () => {}
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
+  }
 
-  private notifyPartialRemoved = () => {}
+  /**
+   * WebSocket送信(パーシャル追加)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendPartialAdded = (receiveDatas: Buffer[]) => {
+    const txBuf = receiveDatas[1]
+    const hashBuf = receiveDatas[2]
+    const merkleComponentHashBuf = receiveDatas[3]
+    const heightBuf = receiveDatas[4]
 
-  private notifyCosignature = () => {}
+    const data = models.TransactionFactory.deserialize(txBuf) as models.Transaction
 
-  private notifyStatus = () => {}
+    const wsData = {
+      topic: 'partialAdded',
+      data: {
+        transaction: data.toJson(),
+        meta: {
+          hash: new Hash256(hashBuf).toString(),
+          merkleComponentHash: new Hash256(merkleComponentHashBuf).toString(),
+          height: models.Height.deserialize(heightBuf).value.toString(),
+        },
+      },
+    }
+
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
+  }
+
+  /**
+   * WebSocket送信(パーシャル削除)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendPartialRemoved = (receiveDatas: Buffer[]) => {
+    const hashBuf = receiveDatas[1]
+
+    const wsData = {
+      topic: 'partialRemoved',
+      data: {
+        meta: {
+          hash: new Hash256(hashBuf).toString(),
+        },
+      },
+    }
+
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
+  }
+
+  /**
+   * WebSocket送信(署名)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendCosignature = (receiveDatas: Buffer[]) => {
+    const cosignatureBuf = receiveDatas[1]
+
+    const data = models.Cosignature.deserialize(cosignatureBuf) as models.Cosignature
+
+    const wsData = {
+      topic: 'cosignature',
+      data: data.toJson(),
+    }
+
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
+  }
+
+  /**
+   * WebSocket送信(ステータス)
+   * @param receiveDatas ZeroMQ受信データ
+   */
+  private sendStatus = (receiveDatas: Buffer[]) => {
+    const hashBuf = receiveDatas[1]
+    const codeBuf = receiveDatas[2]
+    const deadlineBuf = receiveDatas[3]
+
+    const wsData = {
+      topic: 'status',
+      data: {
+        hash: new Hash256(hashBuf).toString(),
+        code: codeBuf.toString(),
+        deadline: models.Timestamp.deserialize(deadlineBuf).toString(),
+      },
+    }
+    console.log(wsData)
+    this.ws.send(JSON.stringify(wsData))
+  }
 }
