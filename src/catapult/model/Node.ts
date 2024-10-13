@@ -130,7 +130,9 @@ export class NodeTime {
 
   static deserialize(payload: Uint8Array) {
     const nodeBufferView = Buffer.from(payload)
-    return new NodeTime(nodeBufferView.readBigUInt64LE(0).toString(), nodeBufferView.readBigUInt64LE(8).toString())
+    const sendTimestamp = nodeBufferView.readBigUInt64LE(0).toString()
+    const receiveTimestamp = nodeBufferView.readBigUInt64LE(8).toString()
+    return new NodeTime(sendTimestamp, receiveTimestamp)
   }
 
   toJson() {
