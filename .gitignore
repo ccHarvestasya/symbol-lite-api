@@ -18,3 +18,4 @@ dist
 tryea
 testdata
 
+*.log

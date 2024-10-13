@@ -1,4 +1,6 @@
 import { Catapult } from './Catapult.js'
 
 const catapult = new Catapult('cert', 'sakia.harvestasya.com')
-console.log((await catapult.getDiagnosticCounter())?.toJson())
+const res = await catapult.getDiagnosticCounter()
+if (res) console.log(JSON.stringify(res.toJson(), undefined, '  '))
+else console.log(undefined)

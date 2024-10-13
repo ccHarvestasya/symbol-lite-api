@@ -1,29 +1,62 @@
+import { Logger } from '../utils/logger.js'
 import { ChainInfo, ChainStatistics, FinalizationStatistics } from './model/Chain.js'
 import { NodeDiagnosticCounter, NodeInfo, NodePeers, NodeTime, NodeUnlockedAccount } from './model/Node.js'
 import { SslSocket } from './SslSocket.js'
 
 export class Catapult extends SslSocket {
-  // private STATE_PATH_BASE_TYPE = 0x200
+  private logger = new Logger('socket')
+
+  private CORE = 0x43
+  private LOCK_HASH = 0x48
+  private LOCK_SECRET = 0x52
+  private METADATA = 0x44
+  private MOSAIC = 0x4d
+  private MULTISIG = 0x55
+  private NAMESPACE = 0x4e
+  private RESTRICTION_ACCOUNT = 0x50
+  private RESTRICTION_MOSAIC = 0x51
+
   /** パケットタイプ */
   private PacketType = {
+    PULL_BLOCK: 0x0_04,
     CHAIN_STATISTICS: 0x0_05,
-    NODE_DISCOVERY_PULL_PING: 0x1_11,
-    NODE_DISCOVERY_PULL_PEERS: 0x1_13,
-    FINALIZATION_STATISTICS: 0x1_32,
-    TIME_SYNC_NETWORK_TIME: 0x1_20,
-    UNLOCKED_ACCOUNTS: 0x3_04,
-    DIAGNOSTIC_COUNTERS: 0x3_00,
+    BLOCK_HASHES: 0x0_07,
+    PULL_BLOCKS: 0x0_08,
     PUSH_TRANSACTIONS: 0x0_09,
     PUSH_PARTIAL_TRANSACTIONS: 0x1_00,
-    // ACCOUNT_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x43,
-    // HASH_LOCK_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x48,
-    // SECRET_LOCK_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x52,
-    // METADATA_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x44,
-    // MOSAIC_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x4d,
-    // MULTISIG_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x55,
-    // NAMESPACE_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x4e,
-    // ACCOUNT_RESTRICTIONS_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x50,
-    // MOSAIC_RESTRICTIONS_STATE_PATH: this.STATE_PATH_BASE_TYPE + 0x51,
+    PUSH_DETACHED_COSIGNATURES: 0x1_01,
+    PULL_PARTIAL_TRANSACTION_INFOS: 0x1_02,
+    NODE_DISCOVERY_PULL_PING: 0x1_11,
+    NODE_DISCOVERY_PULL_PEERS: 0x1_13,
+    TIME_SYNC_NETWORK_TIME: 0x1_20,
+    PULL_FINALIZATION_MESSAGES: 0x1_31,
+    FINALIZATION_STATISTICS: 0x1_32,
+    FINALIZATION_PROOF_AT_EPOCH: 0x1_33,
+    FINALIZATION_PROOF_AT_HEIGHT: 0x1_34,
+    PULL_FINALIZATION_PROOF: 0x1_35,
+    ACCOUNT_STATE_PATH: 0x2_00 + this.CORE,
+    HASH_LOCK_STATE_PATH: 0x2_00 + this.LOCK_HASH,
+    SECRET_LOCK_STATE_PATH: 0x2_00 + this.LOCK_SECRET,
+    METADATA_STATE_PATH: 0x2_00 + this.METADATA,
+    MOSAIC_STATE_PATH: 0x2_00 + this.MOSAIC,
+    MULTISIG_STATE_PATH: 0x2_00 + this.MULTISIG,
+    NAMESPACE_STATE_PATH: 0x2_00 + this.NAMESPACE,
+    ACCOUNT_RESTRICTIONS_STATE_PATH: 0x2_00 + this.RESTRICTION_ACCOUNT,
+    MOSAIC_RESTRICTIONS_STATE_PATH: 0x2_00 + this.RESTRICTION_MOSAIC,
+    DIAGNOSTIC_COUNTERS: 0x3_00,
+    CONFIRM_TIMESTAMPED_HASHES: 0x3_01,
+    ACTIVE_NODE_INFOS: 0x3_02,
+    BLOCK_STATEMENT: 0x3_03,
+    UNLOCKED_ACCOUNTS: 0x3_04,
+    ACCOUNT_INFOS: 0x4_00 + this.CORE,
+    HASH_LOCK_INFOS: 0x4_00 + this.LOCK_HASH,
+    SECRET_LOCK_INFOS: 0x4_00 + this.LOCK_SECRET,
+    METADATA_INFOS: 0x4_00 + this.METADATA,
+    MOSAIC_INFOS: 0x4_00 + this.MOSAIC,
+    MULTISIG_INFOS: 0x4_00 + this.MULTISIG,
+    NAMESPACE_INFOS: 0x4_00 + this.NAMESPACE,
+    ACCOUNT_RESTRICTIONS_INFOS: 0x4_00 + this.RESTRICTION_ACCOUNT,
+    MOSAIC_RESTRICTIONS_INFOS: 0x4_00 + this.RESTRICTION_MOSAIC,
   }
 
   /**
@@ -31,6 +64,7 @@ export class Catapult extends SslSocket {
    * @returns ChainInfo
    */
   async getChainInfo() {
+    this.logger.info('ChainInfo')
     let chainInfo: ChainInfo | undefined
     try {
       const chainStat = await this.getChainStatistics()
@@ -38,7 +72,8 @@ export class Catapult extends SslSocket {
       if (chainStat && finalStat) chainInfo = ChainInfo.create(chainStat, finalStat)
       this.close()
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
     return chainInfo
   }
@@ -54,7 +89,8 @@ export class Catapult extends SslSocket {
       if (socketData) chainStatistics = ChainStatistics.deserialize(socketData)
       // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
     return chainStatistics
   }
@@ -70,7 +106,8 @@ export class Catapult extends SslSocket {
       if (socketData) finalizationStatistics = FinalizationStatistics.deserialize(socketData)
       // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
     return finalizationStatistics
   }
@@ -80,6 +117,7 @@ export class Catapult extends SslSocket {
    * @returns NodeInfo
    */
   async getNodeInfo(): Promise<NodeInfo | undefined> {
+    this.logger.info('NodeInfo')
     let nodeInfo: NodeInfo | undefined
     try {
       // ピア問合せ
@@ -88,7 +126,8 @@ export class Catapult extends SslSocket {
       // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
       this.close()
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
     return nodeInfo
   }
@@ -98,6 +137,7 @@ export class Catapult extends SslSocket {
    * @returns NodePeers
    */
   async getNodePeers(): Promise<NodePeers | undefined> {
+    this.logger.info('NodePeers')
     let nodePeers: NodePeers | undefined
     try {
       // ピア問合せ
@@ -106,7 +146,8 @@ export class Catapult extends SslSocket {
       // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
       this.close()
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
     return nodePeers
   }
@@ -116,6 +157,7 @@ export class Catapult extends SslSocket {
    * @returns NodeTime
    */
   async getNodeTime() {
+    this.logger.info('NodeTime')
     let nodeTime: NodeTime | undefined
     try {
       // ピア問合せ
@@ -124,7 +166,8 @@ export class Catapult extends SslSocket {
       // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
       this.close()
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
     return nodeTime
   }
@@ -134,6 +177,7 @@ export class Catapult extends SslSocket {
    * @returns 成功: NodeUnlockedAccount, 失敗: undefined
    */
   async getNodeUnlockedAccount() {
+    this.logger.info('NodeUnlockedAccount')
     let nodeUnlockedAccount: NodeUnlockedAccount | undefined
     try {
       // ピア問合せ
@@ -142,7 +186,8 @@ export class Catapult extends SslSocket {
       // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
       this.close()
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
     return nodeUnlockedAccount
   }
@@ -152,6 +197,7 @@ export class Catapult extends SslSocket {
    * @returns 診断カウンター
    */
   async getDiagnosticCounter(): Promise<NodeDiagnosticCounter | undefined> {
+    this.logger.info('DiagnosticCounter')
     let diagnosticCounter: NodeDiagnosticCounter | undefined
     try {
       // ピア問合せ
@@ -160,7 +206,8 @@ export class Catapult extends SslSocket {
       // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
       this.close()
     } catch (e) {
-      console.error(e)
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
     }
 
     return diagnosticCounter
