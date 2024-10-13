@@ -1,5 +1,6 @@
 {
   "name": "symbol-lite-api",
+  "description": "Lightweight Symbol-API without MongoDB.",
   "author": "Mimosa Harvestasya @MimosaHrvsty",
   "license": "MIT",
   "homepage": "https://github.com/ccHarvestasya/symbol-lite-api",
@@ -35,5 +36,9 @@
     "symbol-sdk": "../sdk/symbol/sdk/javascript",
     "ws": "^8.18.0",
     "zeromq": "^6.0.8"
+  },
+  "volta": {
+    "node": "20.18.0",
+    "yarn": "4.5.0"
   }
 }

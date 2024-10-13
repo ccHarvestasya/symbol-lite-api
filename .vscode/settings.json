@@ -1,4 +1,18 @@
 {
     "editor.tabSize": 2,
-    "editor.minimap.enabled": false
+    "editor.minimap.enabled": false,
+    "nodejs-testing.extensions": [
+        {
+            "extensions": [
+                "ts",
+                "mjs",
+                "cjs",
+                "js"
+            ],
+            "parameters": [
+                "--import",
+                "tsx"
+            ]
+        }
+    ]
 }

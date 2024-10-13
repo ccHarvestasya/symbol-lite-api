@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-useless-constructor */
+/** @deprecated */
 export class ChainStatistics {
   constructor(
     public readonly height: string,

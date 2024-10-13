@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-useless-constructor */
+/** @deprecated */
 export class FinalizationStatistics {
   constructor(
     public readonly epoch: number,

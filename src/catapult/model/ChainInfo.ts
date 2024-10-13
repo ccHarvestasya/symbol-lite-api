@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-useless-constructor */
+/** @deprecated */
 export class ChainInfo {
   constructor(
     public readonly height: string,
@@ -9,6 +10,7 @@ export class ChainInfo {
   ) {}
 }
 
+/** @deprecated */
 export class LatestFinalizedBlock {
   constructor(
     public readonly finalizationEpoch: number,
