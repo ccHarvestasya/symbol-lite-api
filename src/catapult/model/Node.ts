@@ -193,3 +193,73 @@ export class NodeDiagnosticCounter {
     return JSON.parse(row)
   }
 }
+
+export class NodeActiveNodeInfos {
+  constructor(public nodeActiveNodeInfos: NodeActiveNodeInfo[]) {}
+
+  static deserialize(payload: Uint8Array) {
+    const nodeActiveNodeInfos: NodeActiveNodeInfo[] | undefined = []
+    const nodeBufferView = new PacketBuffer(Buffer.from(payload))
+    while (nodeBufferView.index < nodeBufferView.length) {
+      const startIndex = nodeBufferView.index
+      const dataSize = nodeBufferView.readUInt32LE()
+      const nodeSource = nodeBufferView.readUInt32LE()
+      const publicKey = nodeBufferView.readHexString(32).toUpperCase()
+      const numSuccesses = nodeBufferView.readUInt32LE()
+      const numFailures = nodeBufferView.readUInt32LE()
+      const connectionStatesCount = nodeBufferView.readUInt8()
+      nodeBufferView.addOffset(7)
+      const map = new Map<string, number[]>()
+      while (nodeBufferView.index - startIndex < dataSize) {
+        const name = Buffer.from(nodeBufferView.readUInt32LE().toString(16), 'hex').toString('utf8')
+        const age = nodeBufferView.readUInt32LE()
+        const numConsecutiveFailures = nodeBufferView.readUInt32LE()
+        const banAge = nodeBufferView.readUInt32LE()
+        map.set(name, [age, numConsecutiveFailures, banAge])
+      }
+      nodeActiveNodeInfos.push(
+        new NodeActiveNodeInfo(nodeSource, publicKey, numSuccesses, numFailures, connectionStatesCount, map)
+      )
+    }
+    return new NodeActiveNodeInfos(nodeActiveNodeInfos)
+  }
+
+  toJson() {
+    const datas = []
+    for (const data of this.nodeActiveNodeInfos) datas.push(data.toJson())
+    return datas
+  }
+}
+
+export class NodeActiveNodeInfo {
+  // NodeSource(0:DynamicIncoming, 1:Dynamic, 2:Static, 3:Local)
+  constructor(
+    public nodeSource: number,
+    public publicKey: string,
+    public numSuccesses: number,
+    public numFailures: number,
+    public connectionStatesCount: number,
+    public packedConnectionState: Map<string, number[]>
+  ) {}
+
+  toJson() {
+    let row = '{'
+    row += `"nodeSource": ${this.nodeSource},`
+    row += `"publicKey": "${this.publicKey}",`
+    row += `"numSuccesses": ${this.numSuccesses},`
+    row += `"numFailures": ${this.numFailures},`
+    row += `"connectionStatesCount": ${this.connectionStatesCount},`
+    row += '"packedConnectionState": {'
+    for (const [key, val] of this.packedConnectionState) {
+      row += `"${key}": {`
+      row += `"age": ${val[0]},`
+      row += `"numConsecutiveFailures": ${val[1]},`
+      row += `"banAge": ${val[2]}`
+      row += '},'
+    }
+    row = row.slice(0, row.length - 1)
+    row += '}'
+    row += '}'
+    return JSON.parse(row)
+  }
+}

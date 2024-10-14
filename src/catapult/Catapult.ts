@@ -1,6 +1,13 @@
 import { Logger } from '../utils/logger.js'
 import { ChainInfo, ChainStatistics, FinalizationStatistics } from './model/Chain.js'
-import { NodeDiagnosticCounter, NodeInfo, NodePeers, NodeTime, NodeUnlockedAccount } from './model/Node.js'
+import {
+  NodeActiveNodeInfos,
+  NodeDiagnosticCounter,
+  NodeInfo,
+  NodePeers,
+  NodeTime,
+  NodeUnlockedAccount,
+} from './model/Node.js'
 import { SslSocket } from './SslSocket.js'
 
 export class Catapult extends SslSocket {
@@ -173,8 +180,8 @@ export class Catapult extends SslSocket {
   }
 
   /**
-   * NodeUnlockedAccount取得
-   * @returns 成功: NodeUnlockedAccount, 失敗: undefined
+   * /node/unlockedAccount 同等の値を持つクラスを取得
+   * @returns NodeUnlockedAccount
    */
   async getNodeUnlockedAccount() {
     this.logger.info('NodeUnlockedAccount')
@@ -211,6 +218,23 @@ export class Catapult extends SslSocket {
     }
 
     return diagnosticCounter
+  }
+
+  async getActiveNodeInfos() {
+    this.logger.info('ActiveNodeInfos')
+    let activeNodeInfos: NodeActiveNodeInfos | undefined
+    try {
+      // ピア問合せ
+      const socketData = await this.request(this.PacketType.ACTIVE_NODE_INFOS)
+      if (socketData) activeNodeInfos = NodeActiveNodeInfos.deserialize(socketData)
+      // if (socketData) console.log(Buffer.from(socketData).toString('hex')) // テストデータ抜き
+      // if (socketData) writeFileSync('data.dat', socketData)
+      this.close()
+    } catch (e) {
+      if (e instanceof Error) this.logger.error(e.message)
+      else console.error(e)
+    }
+    return activeNodeInfos
   }
 
   // /**
