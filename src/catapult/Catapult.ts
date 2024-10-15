@@ -237,20 +237,21 @@ export class Catapult extends SslSocket {
     return activeNodeInfos
   }
 
-  // /**
-  //  * トランザクションアナウンス
-  //  * @param payload トランザクションペイロード(Hex文字列)
-  //  */
-  // async announceTx(payloadHex: string): Promise<boolean> {
-  //   const payload = Uint8Array.from(Buffer.from(payloadHex, 'hex'))
-  //   try {
-  //     await this.requestSocket(this.PacketType.PUSH_TRANSACTIONS, payload, false)
-  //   } catch {
-  //     return false
-  //   }
+  /**
+   * トランザクションアナウンス
+   * @param payload トランザクションペイロード(Hex文字列)
+   */
+  async announceTx(payloadHex: string): Promise<boolean> {
+    const payload = Uint8Array.from(Buffer.from(payloadHex, 'hex'))
+    try {
+      await this.request(this.PacketType.PUSH_TRANSACTIONS, payload, false)
+      this.close()
+    } catch {
+      return false
+    }
 
-  //   return true
-  // }
+    return true
+  }
 
   // /**
   //  * アグリゲートボンデッドトランザクションアナウンス
