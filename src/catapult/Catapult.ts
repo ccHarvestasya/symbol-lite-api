@@ -242,6 +242,7 @@ export class Catapult extends SslSocket {
    * @param payload トランザクションペイロード(Hex文字列)
    */
   async announceTx(payloadHex: string): Promise<boolean> {
+    this.logger.info('announceTx')
     const payload = Uint8Array.from(Buffer.from(payloadHex, 'hex'))
     try {
       await this.request(this.PacketType.PUSH_TRANSACTIONS, payload, false)
