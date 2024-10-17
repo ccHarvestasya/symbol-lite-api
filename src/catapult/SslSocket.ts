@@ -139,16 +139,18 @@ export abstract class SslSocket {
       // タイムアウト
       socket.on('timeout', () => {
         socket.destroy()
+        this.logger.debug(`socket timeout: ${packetType}`)
         reject('timeout')
       })
       // エラー
       socket.on('error', (error) => {
         socket.destroy()
+        this.logger.debug(`socket error: ${packetType}`)
         reject(error)
       })
       // 切断
       socket.on('close', () => {
-        this.logger.debug(`ソケット切断: ${packetType}`)
+        this.logger.debug(`socket close: ${packetType}`)
       })
     })
   }
