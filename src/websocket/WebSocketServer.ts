@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto'
 import { IncomingMessage, Server, ServerResponse } from 'http'
 import { RawData, WebSocket, WebSocketServer } from 'ws'
+import { Logger } from '../utils/logger.js'
 import { SymbolZeroMq } from './ZeroMq.js'
 
 export class SymbolWebSocketServer {
+  private logger = new Logger('WebSocket')
   private wsClients = new Map<string, WebSocket>()
   private zmqClients = new Map<string, SymbolZeroMq>()
 
@@ -21,9 +23,14 @@ export class SymbolWebSocketServer {
       ws.on('message', (msg: RawData) => {
         try {
           const recvData = JSON.parse(msg.toString())
-          if (recvData['subscribe']) this.subscribe(recvData['uid'], recvData['subscribe'])
-          else if (recvData['unsubscribe']) this.unsubscribe(recvData['uid'], recvData['unsubscribe'])
-          else throw Error()
+          const zmq = this.zmqClients.get(recvData['uid'])
+          if (zmq) {
+            if (recvData['subscribe']) zmq.subscribe(recvData['subscribe'])
+            else if (recvData['unsubscribe']) zmq.unsubscribe(recvData['unsubscribe'])
+            else throw Error('Unknown function.')
+          } else {
+            throw Error('ZeroMQ instance does not exist.')
+          }
         } catch (err: unknown) {
           if (err instanceof Error && err.message) ws.close(1013, err.message)
           else ws.close()
@@ -40,35 +47,13 @@ export class SymbolWebSocketServer {
   }
 
   /**
-   * 購読開始
-   * @param uuid UUID
-   * @param topic topic
-   */
-  subscribe = (uuid: string, topic: string) => {
-    if (topic === 'block') this.zmqClients.get(uuid)!.subscribeBlock()
-    else if (topic === 'finalizedBlock') this.zmqClients.get(uuid)!.subscribeFinalizedBlock()
-    else if (topic === 'confirmedAdded') this.zmqClients.get(uuid)!.subscribeConfirmedAdded()
-  }
-
-  /**
-   * 購読終了
-   * @param uuid UUID
-   * @param topic topic
-   */
-  unsubscribe = (uuid: string, topic: string) => {
-    if (topic === 'block') this.zmqClients.get(uuid)!.unsubscribeBlock()
-    else if (topic === 'finalizedBlock') this.zmqClients.get(uuid)!.unsubscribeFinalizedBlock()
-    else if (topic === 'confirmedAdded') this.zmqClients.get(uuid)!.unsubscribeConfirmedAdded()
-  }
-
-  /**
    * 接続時処理
    * @param ws WebSocket
    */
   private assignClientId = (ws: WebSocket): void => {
     // UUID取得
     const uuid = randomUUID().replaceAll('-', '').toUpperCase()
-    console.debug(`{"uid": "${uuid}"}`)
+    this.logger.debug(`{"uid": "${uuid}"}`)
     this.wsClients.set(uuid, ws)
     // ZeroMQ開始
     const zeroMq = new SymbolZeroMq(ws)
@@ -84,10 +69,10 @@ export class SymbolWebSocketServer {
    * @param reason 理由
    */
   private closedWebSocket = (code: number, reason: Buffer): void => {
-    console.debug(`code: ${code}`, `reason: ${reason.toString()}`)
+    this.logger.debug(`code: ${code}, reason: ${reason.toString()}`)
     for (const [key, val] of this.wsClients) {
       if (val.readyState === WebSocket.CLOSED) {
-        console.log(`delete uuid: ${key}`)
+        this.logger.info(`delete uuid: ${key}`)
         // WebSocketクライアントリストから削除
         this.wsClients.delete(key)
         // ZeroMQクライアントリストから削除
