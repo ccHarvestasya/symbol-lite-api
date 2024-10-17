@@ -1,5 +1,6 @@
 import http, { Server } from 'http'
 import https from 'https'
+import { readFileSync } from 'node:fs'
 import { ConfigManager } from './utils/configManager.js'
 import { Logger } from './utils/logger.js'
 import { SymbolWebServer } from './webserver/SymbolWebServer.js'
@@ -14,7 +15,7 @@ let server: Server
 const webServer = new SymbolWebServer()
 if (cnfMgr.config.protocol.toUpperCase() === 'HTTPS') {
   server = https.createServer(
-    { cert: cnfMgr.config.sslCertificatePath, key: cnfMgr.config.sslKeyPath },
+    { cert: readFileSync(cnfMgr.config.sslCertificatePath), key: readFileSync(cnfMgr.config.sslKeyPath) },
     webServer.procedure
   )
 } else {
