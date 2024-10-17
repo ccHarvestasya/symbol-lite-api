@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { IncomingMessage, Server, ServerResponse } from 'http'
 import { RawData, WebSocket, WebSocketServer } from 'ws'
-import { SymbolZeroMq } from './SymbolZeroMq.js'
+import { SymbolZeroMq } from './ZeroMq.js'
 
 export class SymbolWebSocketServer {
   private wsClients = new Map<string, WebSocket>()

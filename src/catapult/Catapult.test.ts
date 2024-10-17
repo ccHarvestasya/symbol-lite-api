@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, mock } from 'node:test'
-import { Catapult } from './Catapult.js'
 import assert from 'node:assert'
+import { describe, it, mock } from 'node:test'
 import { utils } from 'symbol-sdk'
+import { Catapult } from './Catapult.js'
+
+const catapult = new Catapult('cert/ca.crt.pem', 'cert/node.crt.pem', 'cert/node.key.pem', 'localhost')
 
 describe('Catapultのテスト', () => {
   it('getChainInfoのテスト', async () => {
-    const catapult = new Catapult('cert', '')
-
     /** モック */
     mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
       let data: Uint8Array | undefined
@@ -38,8 +38,6 @@ describe('Catapultのテスト', () => {
   })
 
   it('getNodeInfoのテスト', async () => {
-    const catapult = new Catapult('cert', '')
-
     /** モック */
     mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
       let data: Uint8Array | undefined
@@ -69,8 +67,6 @@ describe('Catapultのテスト', () => {
   })
 
   it('getNodePeersのテスト', async () => {
-    const catapult = new Catapult('cert', '')
-
     /** モック */
     mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
       let data: Uint8Array | undefined
@@ -103,8 +99,6 @@ describe('Catapultのテスト', () => {
   })
 
   it('getNodeTimeのテスト', async () => {
-    const catapult = new Catapult('cert', '')
-
     /** モック */
     mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
       let data: Uint8Array | undefined
@@ -126,8 +120,6 @@ describe('Catapultのテスト', () => {
   })
 
   it('getNodeUnlockedAccountのテスト', async () => {
-    const catapult = new Catapult('cert', '')
-
     /** モック */
     mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
       let data: Uint8Array | undefined
@@ -151,8 +143,6 @@ describe('Catapultのテスト', () => {
   })
 
   it('getDiagnosticCounterのテスト', async () => {
-    const catapult = new Catapult('cert', '')
-
     /** モック */
     mock.method(catapult as any, 'request', (packetType: number): Uint8Array | undefined => {
       let data: Uint8Array | undefined

@@ -1,47 +1,31 @@
 import log4js from 'log4js'
-
-const logLevel = 'all'
-
-log4js.configure({
-  appenders: {
-    rest: {
-      daysToKeep: 90,
-      filename: 'symbol-lite-api.log',
-      keepFileExt: true,
-      layout: { type: 'pattern', pattern: '[%d] [%-5p] %-10c %m' },
-      pattern: 'yyyyMMdd',
-      type: 'file',
-    },
-    socket: {
-      daysToKeep: 90,
-      filename: 'symbol-lite-api.log',
-      keepFileExt: true,
-      layout: { type: 'pattern', pattern: '[%d] [%-5p] %-10c %m' },
-      pattern: 'yyyyMMdd',
-      type: 'file',
-    },
-    websocket: {
-      daysToKeep: 90,
-      filename: 'symbol-lite-api.log',
-      keepFileExt: true,
-      layout: { type: 'pattern', pattern: '[%d] [%-5p] %-10c %m' },
-      pattern: 'yyyyMMdd',
-      type: 'file',
-    },
-    stdout: { type: 'stdout' },
-  },
-  categories: {
-    default: { appenders: ['stdout'], level: logLevel },
-    rest: { appenders: ['rest', 'stdout'], level: logLevel },
-    socket: { appenders: ['socket', 'stdout'], level: logLevel },
-    websocket: { appenders: ['websocket', 'stdout'], level: logLevel },
-  },
-})
+import { ConfigManager } from './configManager.js'
 
 export class Logger {
   private logger_
 
   constructor(category?: string) {
+    const cnfMgr = ConfigManager.getInstance()
+    log4js.configure({
+      appenders: {
+        file: {
+          daysToKeep: 90,
+          filename: cnfMgr.config.logging.file.filename,
+          keepFileExt: true,
+          layout: { type: 'pattern', pattern: '[%d] [%-5p] %-10c %m' },
+          pattern: 'yyyyMMdd',
+          type: 'file',
+          level: cnfMgr.config.logging.file.level,
+        },
+        console: { type: 'stdout', level: cnfMgr.config.logging.console.level },
+      },
+      categories: {
+        default: { appenders: ['console'], level: 'all' },
+        Rest: { appenders: ['file', 'console'], level: 'all' },
+        Socket: { appenders: ['file', 'console'], level: 'all' },
+        WebSocket: { appenders: ['file', 'console'], level: 'all' },
+      },
+    })
     this.logger_ = log4js.getLogger(category)
   }
 

@@ -1,11 +1,14 @@
 import { X509Certificate } from 'node:crypto'
-import fs from 'node:fs'
+import { readFileSync } from 'node:fs'
 import tls, { ConnectionOptions } from 'node:tls'
+import { Logger } from '../utils/logger.js'
 
 /**
  * SSLソケット
  */
 export abstract class SslSocket {
+  protected logger = new Logger('Socket')
+
   /** コネクションオプション */
   private _connectionOptions: ConnectionOptions
 
@@ -25,17 +28,19 @@ export abstract class SslSocket {
    * @param timeout タイムアウト(デフォルト: 3000)
    */
   constructor(
-    protected readonly certPath: string,
-    protected readonly host: string,
-    protected readonly port: number = 7900,
-    private readonly timeout: number = 3000
+    caCertPath: string,
+    nodeCertPath: string,
+    nodeKeyPath: string,
+    host: string,
+    port: number = 7900,
+    timeout: number = 3000
   ) {
     this._connectionOptions = {
       host,
       port,
-      timeout: timeout,
-      cert: fs.readFileSync(`${certPath}/node.full.crt.pem`),
-      key: fs.readFileSync(`${certPath}/node.key.pem`),
+      timeout,
+      cert: Buffer.concat([readFileSync(nodeCertPath), readFileSync(caCertPath)]),
+      key: readFileSync(nodeKeyPath),
       rejectUnauthorized: false,
     }
   }
@@ -143,7 +148,7 @@ export abstract class SslSocket {
       })
       // 切断
       socket.on('close', () => {
-        console.debug(`切断: ${packetType}`)
+        this.logger.debug(`ソケット切断: ${packetType}`)
       })
     })
   }

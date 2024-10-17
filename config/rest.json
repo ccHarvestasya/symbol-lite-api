@@ -1,0 +1,37 @@
+{
+  "port": 3000,
+  "protocol": "HTTP",
+  "sslKeyPath": "",
+  "sslCertificatePath": "",
+  "apiNode": {
+    "host": "localhost",
+    "port": 7900,
+    "tlsClientCertificatePath": "cert/node.crt.pem",
+    "tlsClientKeyPath": "cert/node.key.pem",
+    "tlsCaCertificatePath": "cert/ca.crt.pem",
+    "timeout": 3000,
+    "networkPropertyFilePath": "server-config/config-network.properties",
+    "nodePropertyFilePath": "server-config/config-node.properties",
+    "inflationPropertyFilePath": "server-config/config-inflation.properties"
+  },
+  "websocket": {
+    "mq": {
+      "host": "127.0.0.1",
+      "port": 7902,
+      "monitorInterval": 500,
+      "connectTimeout": 10000,
+      "monitorLoggingThrottle": 60000,
+      "maxSubscriptions": 500
+    },
+    "allowOptionalAddress": true
+  },
+  "logging": {
+    "console": {
+      "level": "all"
+    },
+    "file": {
+      "level": "all",
+      "filename": "catapult-lite-rest.log"
+    }
+  }
+}

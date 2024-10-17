@@ -1,7 +1,7 @@
 import { describe, it, mock } from 'node:test'
-import { Subscriber } from 'zeromq'
-import { SymbolZeroMq } from './SymbolZeroMq.js'
 import { WebSocket } from 'ws'
+import { Subscriber } from 'zeromq'
+import { SymbolZeroMq } from './ZeroMq.js'
 
 const zmqSub = new Subscriber()
 mock.method(zmqSub, 'connect', (tcpAddress: string) => {

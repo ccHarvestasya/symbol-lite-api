@@ -1,15 +1,31 @@
-import { createServer } from 'http'
-import { SymbolWebSocketServer } from '../src/SymbolWebSocketServer.js'
+import http, { Server } from 'http'
+import https from 'https'
+import { ConfigManager } from './utils/configManager.js'
+import { Logger } from './utils/logger.js'
+import { SymbolWebServer } from './webserver/SymbolWebServer.js'
+import { SymbolWebSocketServer } from './websocket/WebSocketServer.js'
 
-/** HTTPサーバ */
-const webServer = createServer(async (request, response) => {
-  console.log(request)
-  console.log(response)
-})
+/** コンフィグ初期化 */
+ConfigManager.init()
+const cnfMgr = ConfigManager.getInstance()
+
+/** Webサーバ */
+let server: Server
+const webServer = new SymbolWebServer()
+if (cnfMgr.config.protocol.toUpperCase() === 'HTTPS') {
+  server = https.createServer(
+    { cert: cnfMgr.config.sslCertificatePath, key: cnfMgr.config.sslKeyPath },
+    webServer.procedure
+  )
+} else {
+  server = http.createServer(webServer.procedure)
+}
 
 /** WebSocketサーバ */
 const wsServer = new SymbolWebSocketServer()
-wsServer.start(webServer)
+wsServer.start(server)
 
 /** サーバ開始 */
-webServer.listen(3000)
+const logger = new Logger('Rest')
+logger.info(`Rest start - Protocol: ${cnfMgr.config.protocol.toUpperCase()}, Port: ${cnfMgr.config.port}`)
+server.listen(cnfMgr.config.port)

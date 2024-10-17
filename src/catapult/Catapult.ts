@@ -1,4 +1,3 @@
-import { Logger } from '../utils/logger.js'
 import { ChainInfo, ChainStatistics, FinalizationStatistics } from './model/Chain.js'
 import {
   NodeActiveNodeInfos,
@@ -11,8 +10,6 @@ import {
 import { SslSocket } from './SslSocket.js'
 
 export class Catapult extends SslSocket {
-  private logger = new Logger('socket')
-
   private CORE = 0x43
   private LOCK_HASH = 0x48
   private LOCK_SECRET = 0x52

@@ -1,7 +1,7 @@
 import { Hash256, utils } from 'symbol-sdk'
-import { Subscriber } from 'zeromq'
-import { WebSocket } from 'ws'
 import { models } from 'symbol-sdk/symbol'
+import { WebSocket } from 'ws'
+import { Subscriber } from 'zeromq'
 
 export class SymbolZeroMq {
   private ws: WebSocket
