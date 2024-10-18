@@ -14,7 +14,8 @@
   "types": "dist/index.d.ts",
   "packageManager": "yarn@4.4.0",
   "scripts": {
-    "build": "tsc",
+    "build": "shx rm -rf dist && tsc",
+    "clean": "shx rm -rf dist",
     "test": "node --import tsx ./src/*.test.ts",
     "publish": "npm run build && npm publish --access=public"
   },
@@ -28,6 +29,8 @@
     "eslint": "8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.3",
+    "rimraf": "^6.0.1",
+    "shx": "^0.3.4",
     "tsx": "^4.19.1",
     "typescript": "5.5"
   },
