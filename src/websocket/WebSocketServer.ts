@@ -22,6 +22,7 @@ export class SymbolWebSocketServer {
       /** メッセージ受信 */
       ws.on('message', (msg: RawData) => {
         try {
+          this.logger.info(msg.toString())
           const recvData = JSON.parse(msg.toString())
           const zmq = this.zmqClients.get(recvData['uid'])
           if (zmq) {

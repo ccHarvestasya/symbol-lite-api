@@ -16,6 +16,18 @@ export interface Config {
     nodePropertyFilePath: string
     inflationPropertyFilePath: string
   }
+  websocket: {
+    mq: {
+      host: string
+      port: number
+      monitorInterval: number
+      connectTimeout: number
+      monitorLoggingThrottle: number
+      maxSubscriptions: number
+    }
+    allowOptionalAddress: boolean
+  }
+
   logging: {
     console: {
       level: string

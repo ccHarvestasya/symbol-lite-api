@@ -2,11 +2,15 @@ import { Hash256, utils } from 'symbol-sdk'
 import { models } from 'symbol-sdk/symbol'
 import { WebSocket } from 'ws'
 import { Subscriber } from 'zeromq'
+import { ConfigManager } from '../utils/configManager.js'
+import { Logger } from '../utils/logger.js'
 
 export class SymbolZeroMq {
   private ws: WebSocket
   private sock: Subscriber
   private tcpAddress: string
+  private cnfMgr = ConfigManager.getInstance()
+  private logger = new Logger('WebSocket')
 
   private blockMarker = Buffer.from(utils.hexToUint8('9FF2D8E480CA6A49').reverse())
   private finalizedBlockMarker = Buffer.from(utils.hexToUint8('4D4832A031CE7954').reverse())
@@ -25,12 +29,18 @@ export class SymbolZeroMq {
    * @param host ZeroMQ接続ホスト
    * @param port ZeroMQ接続ポート
    */
-  constructor(ws: WebSocket, host = 'localhost', port = 7902) {
+  constructor(ws: WebSocket) {
     this.ws = ws
-    this.sock = new Subscriber()
+    this.sock = new Subscriber({
+      connectTimeout: this.cnfMgr.config.websocket.mq.connectTimeout,
+      tcpKeepaliveInterval: this.cnfMgr.config.websocket.mq.monitorInterval,
+      tcpKeepaliveCount: this.cnfMgr.config.websocket.mq.maxSubscriptions,
+    })
+    const host = this.cnfMgr.config.websocket.mq.host
+    const port = this.cnfMgr.config.websocket.mq.port
     this.tcpAddress = `tcp://${host}:${port}`
     this.sock.connect(this.tcpAddress)
-    console.log(`Connecting to ${this.tcpAddress}`)
+    this.logger.info(`Connecting to ${this.tcpAddress}`)
   }
 
   /**
@@ -84,12 +94,6 @@ export class SymbolZeroMq {
    */
   sendWebSocket = (receiveDatas: Buffer[]) => {
     const topic = receiveDatas[0]
-
-    console.debug(topic.toString('utf8'))
-    for (const rcv of receiveDatas) {
-      console.debug(rcv.toString('hex'))
-    }
-
     if (topic.equals(this.blockMarker)) this.sendBlock(receiveDatas)
     else if (topic.equals(this.finalizedBlockMarker)) this.sendFinalizedBlock(receiveDatas)
     else if (topic.readInt8() === this.confirmedAddedMarker.readInt8()) this.sendConfirmedAdded(receiveDatas)
@@ -109,10 +113,8 @@ export class SymbolZeroMq {
     const blockHeaderBuf = receiveDatas[1]
     const entityHashBuf = receiveDatas[2]
     const generationHashBuf = receiveDatas[3]
-
     blockHeaderBuf.writeInt32LE(blockHeaderBuf.byteLength) // 先頭にあるサイズを実サイズに変更する
     const data = models.BlockFactory.deserialize(blockHeaderBuf) as models.Block
-
     const wsData = {
       topic: 'block',
       data: {
@@ -123,8 +125,7 @@ export class SymbolZeroMq {
         },
       },
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -134,15 +135,12 @@ export class SymbolZeroMq {
    */
   private sendFinalizedBlock = (receiveDatas: Buffer[]) => {
     const finalizedBlockHeaderBuf = receiveDatas[1]
-
     const data = models.FinalizedBlockHeader.deserialize(finalizedBlockHeaderBuf) as models.FinalizedBlockHeader
-
     const wsData = {
       topic: 'finalizedBlock',
       data: data.toJson(),
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -155,9 +153,7 @@ export class SymbolZeroMq {
     const hashBuf = receiveDatas[2]
     const merkleComponentHashBuf = receiveDatas[3]
     const heightBuf = receiveDatas[4]
-
     const data = models.TransactionFactory.deserialize(txBuf) as models.Transaction
-
     const wsData = {
       topic: 'confirmedAdded',
       data: {
@@ -169,8 +165,7 @@ export class SymbolZeroMq {
         },
       },
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -183,9 +178,7 @@ export class SymbolZeroMq {
     const hashBuf = receiveDatas[2]
     const merkleComponentHashBuf = receiveDatas[3]
     const heightBuf = receiveDatas[4]
-
     const data = models.TransactionFactory.deserialize(txBuf) as models.Transaction
-
     const wsData = {
       topic: 'unconfirmedAdded',
       data: {
@@ -197,8 +190,7 @@ export class SymbolZeroMq {
         },
       },
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -208,7 +200,6 @@ export class SymbolZeroMq {
    */
   private sendUnconfirmedRemoved = (receiveDatas: Buffer[]) => {
     const hashBuf = receiveDatas[1]
-
     const wsData = {
       topic: 'unconfirmedRemoved',
       data: {
@@ -217,8 +208,7 @@ export class SymbolZeroMq {
         },
       },
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -231,9 +221,7 @@ export class SymbolZeroMq {
     const hashBuf = receiveDatas[2]
     const merkleComponentHashBuf = receiveDatas[3]
     const heightBuf = receiveDatas[4]
-
     const data = models.TransactionFactory.deserialize(txBuf) as models.Transaction
-
     const wsData = {
       topic: 'partialAdded',
       data: {
@@ -245,8 +233,7 @@ export class SymbolZeroMq {
         },
       },
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -256,7 +243,6 @@ export class SymbolZeroMq {
    */
   private sendPartialRemoved = (receiveDatas: Buffer[]) => {
     const hashBuf = receiveDatas[1]
-
     const wsData = {
       topic: 'partialRemoved',
       data: {
@@ -265,8 +251,7 @@ export class SymbolZeroMq {
         },
       },
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -276,15 +261,12 @@ export class SymbolZeroMq {
    */
   private sendCosignature = (receiveDatas: Buffer[]) => {
     const cosignatureBuf = receiveDatas[1]
-
     const data = models.Cosignature.deserialize(cosignatureBuf) as models.Cosignature
-
     const wsData = {
       topic: 'cosignature',
       data: data.toJson(),
     }
-
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 
@@ -296,7 +278,6 @@ export class SymbolZeroMq {
     const hashBuf = receiveDatas[1]
     const codeBuf = receiveDatas[2]
     const deadlineBuf = receiveDatas[3]
-
     const wsData = {
       topic: 'status',
       data: {
@@ -305,7 +286,7 @@ export class SymbolZeroMq {
         deadline: models.Timestamp.deserialize(deadlineBuf).toString(),
       },
     }
-    console.log(wsData)
+    // console.log(wsData)
     this.ws.send(JSON.stringify(wsData))
   }
 }
