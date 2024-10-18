@@ -236,35 +236,50 @@ export class Catapult extends SslSocket {
 
   /**
    * トランザクションアナウンス
-   * @param payload トランザクションペイロード(Hex文字列)
+   * @param payload トランザクションペイロード
    */
-  async announceTx(payloadHex: string): Promise<boolean> {
+  async announceTx(payload: Uint8Array): Promise<boolean> {
     this.logger.info('announceTx')
-    const payload = Uint8Array.from(Buffer.from(payloadHex, 'hex'))
     try {
       await this.request(this.PacketType.PUSH_TRANSACTIONS, payload, false)
       this.close()
     } catch {
       return false
     }
-
     return true
   }
 
-  // /**
-  //  * アグリゲートボンデッドトランザクションアナウンス
-  //  * API必要
-  //  * @param payloadHex トランザクションペイロード(Hex文字列)
-  //  * @returns
-  //  */
-  // async announceTxPartial(payloadHex: string): Promise<boolean> {
-  //   const payload = Uint8Array.from(Buffer.from(payloadHex, 'hex'))
-  //   try {
-  //     await this.requestSocket(this.PacketType.PUSH_PARTIAL_TRANSACTIONS, payload, false)
-  //   } catch {
-  //     return false
-  //   }
+  /**
+   * アグリゲートボンデッドトランザクションアナウンス
+   * API必要
+   * @param payloadHex トランザクションペイロード
+   * @returns
+   */
+  async announceTxPartial(payload: Uint8Array): Promise<boolean> {
+    this.logger.info('announceTxPartial')
+    try {
+      await this.request(this.PacketType.PUSH_PARTIAL_TRANSACTIONS, payload, false)
+      this.close()
+    } catch {
+      return false
+    }
+    return true
+  }
 
-  //   return true
-  // }
+  /**
+   * アグリゲートボンデッドトランザクションアナウンス
+   * API必要
+   * @param payload トランザクションペイロード(Hex文字列)
+   * @returns
+   */
+  async announceTxCosignature(payload: Uint8Array): Promise<boolean> {
+    this.logger.info('announceTxPartial')
+    try {
+      await this.request(this.PacketType.PUSH_DETACHED_COSIGNATURES, payload, false)
+      this.close()
+    } catch {
+      return false
+    }
+    return true
+  }
 }

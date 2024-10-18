@@ -10,6 +10,7 @@ export class SymbolWebServer {
   private cnfMgr = ConfigManager.getInstance()
   private logger = new Logger('Rest')
   private catapult: Catapult
+
   constructor() {
     this.catapult = new Catapult(
       this.cnfMgr.config.apiNode.tlsCaCertificatePath,

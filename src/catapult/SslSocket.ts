@@ -48,8 +48,13 @@ export abstract class SslSocket {
   /**
    * ソケット接続
    */
-  protected connect(): void {
-    this.tlsSocket = tls.connect(this._connectionOptions)
+  protected async connect(): Promise<void> {
+    this.logger.debug('socket connected.')
+    this.tlsSocket = await new Promise<tls.TLSSocket>((resolve) => {
+      const sock = tls.connect(this._connectionOptions, () => {
+        resolve(sock)
+      })
+    })
   }
 
   /**
@@ -78,7 +83,7 @@ export abstract class SslSocket {
       symbolPayload.set(payload)
     }
     // 接続確認
-    if (!this.tlsSocket || this.tlsSocket.closed) this.connect()
+    if (!this.tlsSocket || this.tlsSocket.closed) await this.connect()
     if (!this.tlsSocket) throw Error('Failed to connect socket.')
     // Symbolパケット送信
     this.tlsSocket.write(new Uint8Array(symbolPacketBuffer))
@@ -160,7 +165,7 @@ export abstract class SslSocket {
    */
   protected close() {
     if (this.tlsSocket && !this.tlsSocket.closed) {
-      this.tlsSocket.end()
+      // this.tlsSocket.end()
       this.tlsSocket.destroy()
     }
   }
