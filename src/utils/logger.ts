@@ -10,7 +10,7 @@ export class Logger {
       appenders: {
         file: {
           daysToKeep: 90,
-          filename: cnfMgr.config.logging.file.filename,
+          filename: `logs/${cnfMgr.config.logging.file.filename}`,
           keepFileExt: true,
           layout: { type: 'pattern', pattern: '[%d] [%-5p] %-10c %m' },
           pattern: 'yyyyMMdd',
