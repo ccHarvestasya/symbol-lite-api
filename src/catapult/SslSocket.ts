@@ -165,8 +165,7 @@ export abstract class SslSocket {
    */
   protected close() {
     if (this.tlsSocket && !this.tlsSocket.closed) {
-      // this.tlsSocket.end()
-      this.tlsSocket.destroy()
+      this.tlsSocket.end(new Uint8Array())
     }
   }
 
