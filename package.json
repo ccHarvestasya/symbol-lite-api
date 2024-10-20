@@ -14,9 +14,13 @@
   "types": "dist/index.d.ts",
   "packageManager": "yarn@4.4.0",
   "scripts": {
+    "start": "node ./dist/index.js",
     "build": "shx rm -rf dist && tsc",
     "clean": "shx rm -rf dist",
     "test": "node --import tsx ./src/*.test.ts",
+    "docker:build": "docker build . -t harvestasya/symbol-lite-api",
+    "docker:login": "docker run -it -p 3000:3000 harvestasya/symbol-lite-api bash",
+    "docker:start": "docker run -p 3000:3000 harvestasya/symbol-lite-api",
     "publish": "npm run build && npm publish --access=public"
   },
   "devDependencies": {

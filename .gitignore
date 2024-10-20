@@ -12,7 +12,7 @@
 #!.yarn/cache
 .pnp.*
 
-cert
+cert*
 node_modules
 dist
 tryea

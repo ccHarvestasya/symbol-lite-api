@@ -1,0 +1,12 @@
+services:
+  lite-api:
+    container_name: symbol-lite-api
+    image: harvestasya/symbol-lite-api
+    command: node ./dist/index.js
+    ports:
+      - 3000:3000
+    extra_hosts:
+      - localhost:172.17.0.1
+    volumes:
+      - ./cert:/usr/src/symbol-lite-api/cert
+      - ./config:/usr/src/symbol-lite-api/config
