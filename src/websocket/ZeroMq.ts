@@ -1,5 +1,5 @@
 import { Hash256, utils } from 'symbol-sdk'
-import { models } from 'symbol-sdk/symbol'
+import { Address, models } from 'symbol-sdk/symbol'
 import { WebSocket } from 'ws'
 import { Subscriber } from 'zeromq'
 import { ConfigManager } from '../utils/configManager.js'
@@ -61,15 +61,20 @@ export class SymbolZeroMq {
    * @param topic トピック
    */
   subscribe = (topic: string): void => {
-    if (topic === 'block') this.sock.subscribe(this.blockMarker)
-    else if (topic === 'finalizedBlock') this.sock.subscribe(this.finalizedBlockMarker)
-    else if (topic === 'confirmedAdded') this.sock.subscribe(this.confirmedAddedMarker)
-    else if (topic === 'unconfirmedAdded') this.sock.subscribe(this.unconfirmedAddedMarker)
-    else if (topic === 'unconfirmedRemoved') this.sock.subscribe(this.unconfirmedRemovedMarker)
-    else if (topic === 'partialAdded') this.sock.subscribe(this.partialAddedMarker)
-    else if (topic === 'partialRemoved') this.sock.subscribe(this.partialRemovedMarker)
-    else if (topic === 'cosignature') this.sock.subscribe(this.cosignatureMarker)
-    else if (topic === 'status') this.sock.subscribe(this.statusMarker)
+    const topicNames = topic.split('/')
+    const tpc = topicNames[0]
+    let addr = new Uint8Array()
+    if (topicNames.length >= 2) addr = new Address(topicNames[1]).bytes
+    if (tpc === 'block') this.execSubscribe(this.blockMarker)
+    else if (tpc === 'finalizedBlock') this.execSubscribe(this.finalizedBlockMarker)
+    else if (tpc === 'confirmedAdded') this.execSubscribe(Buffer.concat([this.confirmedAddedMarker, addr]))
+    else if (tpc === 'unconfirmedAdded') this.execSubscribe(Buffer.concat([this.unconfirmedAddedMarker, addr]))
+    else if (tpc === 'unconfirmedRemoved') this.execSubscribe(Buffer.concat([this.unconfirmedRemovedMarker, addr]))
+    else if (tpc === 'partialAdded') this.execSubscribe(Buffer.concat([this.partialAddedMarker, addr]))
+    else if (tpc === 'partialRemoved') this.execSubscribe(Buffer.concat([this.partialRemovedMarker, addr]))
+    else if (tpc === 'cosignature') this.execSubscribe(Buffer.concat([this.cosignatureMarker, addr]))
+    else if (tpc === 'status') this.execSubscribe(Buffer.concat([this.statusMarker, addr]))
+    else throw Error('Unknown topic.')
   }
 
   /**
@@ -77,15 +82,20 @@ export class SymbolZeroMq {
    * @param topic トピック
    */
   unsubscribe = (topic: string): void => {
-    if (topic === 'block') this.sock.unsubscribe(this.blockMarker)
-    else if (topic === 'finalizedBlock') this.sock.unsubscribe(this.finalizedBlockMarker)
-    else if (topic === 'confirmedAdded') this.sock.unsubscribe(this.confirmedAddedMarker)
-    else if (topic === 'unconfirmedAdded') this.sock.unsubscribe(this.unconfirmedAddedMarker)
-    else if (topic === 'unconfirmedRemoved') this.sock.unsubscribe(this.unconfirmedRemovedMarker)
-    else if (topic === 'partialAdded') this.sock.unsubscribe(this.partialAddedMarker)
-    else if (topic === 'partialRemoved') this.sock.unsubscribe(this.partialRemovedMarker)
-    else if (topic === 'cosignature') this.sock.unsubscribe(this.cosignatureMarker)
-    else if (topic === 'status') this.sock.unsubscribe(this.statusMarker)
+    const topicNames = topic.split('/')
+    const tpc = topicNames[0]
+    let addr = new Uint8Array()
+    if (topicNames.length >= 2) addr = new Address(topicNames[1]).bytes
+    if (tpc === 'block') this.execUnsubscribe(this.blockMarker)
+    else if (tpc === 'finalizedBlock') this.execUnsubscribe(this.finalizedBlockMarker)
+    else if (tpc === 'confirmedAdded') this.execUnsubscribe(Buffer.concat([this.confirmedAddedMarker, addr]))
+    else if (tpc === 'unconfirmedAdded') this.execUnsubscribe(Buffer.concat([this.unconfirmedAddedMarker, addr]))
+    else if (tpc === 'unconfirmedRemoved') this.execUnsubscribe(Buffer.concat([this.unconfirmedRemovedMarker, addr]))
+    else if (tpc === 'partialAdded') this.execUnsubscribe(Buffer.concat([this.partialAddedMarker, addr]))
+    else if (tpc === 'partialRemoved') this.execUnsubscribe(Buffer.concat([this.partialRemovedMarker, addr]))
+    else if (tpc === 'cosignature') this.execUnsubscribe(Buffer.concat([this.cosignatureMarker, addr]))
+    else if (tpc === 'status') this.execUnsubscribe(Buffer.concat([this.statusMarker, addr]))
+    else throw Error('Unknown topic.')
   }
 
   /**
@@ -126,7 +136,7 @@ export class SymbolZeroMq {
       },
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -141,7 +151,7 @@ export class SymbolZeroMq {
       data: data.toJson(),
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -166,7 +176,7 @@ export class SymbolZeroMq {
       },
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -191,7 +201,7 @@ export class SymbolZeroMq {
       },
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -209,7 +219,7 @@ export class SymbolZeroMq {
       },
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -234,7 +244,7 @@ export class SymbolZeroMq {
       },
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -252,7 +262,7 @@ export class SymbolZeroMq {
       },
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -267,7 +277,7 @@ export class SymbolZeroMq {
       data: data.toJson(),
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
 
   /**
@@ -275,18 +285,24 @@ export class SymbolZeroMq {
    * @param receiveDatas ZeroMQ受信データ
    */
   private sendStatus = (receiveDatas: Buffer[]) => {
-    const hashBuf = receiveDatas[1]
-    const codeBuf = receiveDatas[2]
-    const deadlineBuf = receiveDatas[3]
+    const hashBuf = receiveDatas[1].subarray(0, 32)
+    const deadlineBuf = receiveDatas[1].subarray(32, 40)
+    const codeBuf = receiveDatas[1].subarray(40, 44)
     const wsData = {
       topic: 'status',
       data: {
         hash: new Hash256(hashBuf).toString(),
-        code: codeBuf.toString(),
-        deadline: models.Timestamp.deserialize(deadlineBuf).toString(),
+        code: codeBuf.readUint32LE().toString(16),
+        deadline: deadlineBuf.readBigUInt64LE().toString(),
       },
     }
     // console.log(wsData)
-    this.ws.send(JSON.stringify(wsData))
+    this.execSendWebSocket(JSON.stringify(wsData))
   }
+
+  private execSubscribe = (topic: Buffer) => this.sock.subscribe(topic)
+
+  private execUnsubscribe = (topic: Buffer) => this.sock.unsubscribe(topic)
+
+  private execSendWebSocket = (data: string) => this.ws.send(data)
 }
