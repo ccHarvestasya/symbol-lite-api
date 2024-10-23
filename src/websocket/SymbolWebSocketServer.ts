@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { IncomingMessage, Server, ServerResponse } from 'http'
 import { RawData, WebSocket, WebSocketServer } from 'ws'
 import { Logger } from '../utils/logger.js'
-import { SymbolZeroMq } from './ZeroMq.js'
+import { SymbolZeroMq } from './SymbolZeroMq.js'
 
 export class SymbolWebSocketServer {
   private logger = new Logger('WebSocket')

@@ -5,7 +5,7 @@ import { utils } from 'symbol-sdk'
 import { Address } from 'symbol-sdk/symbol'
 import { WebSocket } from 'ws'
 import { ConfigManager } from '../utils/configManager.js'
-import { SymbolZeroMq } from './ZeroMq.js'
+import { SymbolZeroMq } from './SymbolZeroMq.js'
 
 /** コンフィグ初期化 */
 ConfigManager.init()

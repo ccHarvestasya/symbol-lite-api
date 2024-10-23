@@ -2,7 +2,11 @@
 import assert from 'node:assert'
 import { describe, it, mock } from 'node:test'
 import { utils } from 'symbol-sdk'
+import { ConfigManager } from '../utils/configManager.js'
 import { Catapult } from './Catapult.js'
+
+/** コンフィグ初期化 */
+ConfigManager.init()
 
 const catapult = new Catapult('cert/ca.crt.pem', 'cert/node.crt.pem', 'cert/node.key.pem', 'localhost')
 

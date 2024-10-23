@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { ConfigManager } from './utils/configManager.js'
 import { Logger } from './utils/logger.js'
 import { SymbolWebServer } from './webserver/SymbolWebServer.js'
-import { SymbolWebSocketServer } from './websocket/WebSocketServer.js'
+import { SymbolWebSocketServer } from './websocket/SymbolWebSocketServer.js'
 
 /** コンフィグ初期化 */
 ConfigManager.init()
