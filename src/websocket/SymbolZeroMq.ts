@@ -4,6 +4,7 @@ import { WebSocket } from 'ws'
 import { Subscriber } from 'zeromq'
 import { ConfigManager } from '../utils/configManager.js'
 import { Logger } from '../utils/logger.js'
+import { toStringInternal } from './status.js'
 
 export class SymbolZeroMq {
   private ws: WebSocket
@@ -292,7 +293,7 @@ export class SymbolZeroMq {
       topic: 'status',
       data: {
         hash: new Hash256(hashBuf).toString(),
-        code: codeBuf.readUint32LE().toString(16),
+        code: toStringInternal(codeBuf.readUint32LE()),
         deadline: deadlineBuf.readBigUInt64LE().toString(),
       },
     }

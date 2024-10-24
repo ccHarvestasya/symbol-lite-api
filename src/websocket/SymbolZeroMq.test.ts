@@ -689,7 +689,7 @@ describe('SymbolZeroMqのテスト', () => {
     /** 検証 */
     deepStrictEqual(
       moc.mock.calls[0].arguments[0],
-      '{"topic":"status","data":{"hash":"261BE4D0F6ACC653CC5BE87C8727F46DC7198B7C3A1A0FFD8CF5A5FB8E7910C2","code":"80430003","deadline":"62386330473"}}'
+      '{"topic":"status","data":{"hash":"261BE4D0F6ACC653CC5BE87C8727F46DC7198B7C3A1A0FFD8CF5A5FB8E7910C2","code":"Failure_Core_Insufficient_Balance","deadline":"62386330473"}}'
     )
   })
 })
